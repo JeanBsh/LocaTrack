@@ -35,8 +35,8 @@ export default function PropertyList() {
                         <div className={styles.header}>
                             <span className={styles.type}>{property.type}</span>
                             <span className={`${styles.status} ${property.status === 'DISPONIBLE' ? styles.statusAvailable :
-                                    property.status === 'OCCUPE' ? styles.statusOccupied :
-                                        styles.statusWork
+                                property.status === 'OCCUPE' ? styles.statusOccupied :
+                                    styles.statusWork
                                 }`}>
                                 {property.status}
                             </span>
@@ -53,10 +53,7 @@ export default function PropertyList() {
                             <span>{property.features.rooms} p.</span>
                         </div>
 
-                        <div className={styles.price}>
-                            {property.financials.baseRent + property.financials.charges} €
-                            <span className={styles.period}> / mois</span>
-                        </div>
+
                     </div>
                 </Link>
             ))}

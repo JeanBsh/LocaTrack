@@ -9,7 +9,7 @@ const navItems = [
     { href: '/', label: 'Tableau de Bord', icon: Home },
     { href: '/biens', label: 'Biens', icon: Building2 },
     { href: '/locataires', label: 'Locataires', icon: Users },
-    { href: '/baux', label: 'Baux', icon: FileText },
+    { href: '/documents', label: 'Documents', icon: FileText },
     { href: '/finance', label: 'Finance', icon: PieChart },
 ];
 

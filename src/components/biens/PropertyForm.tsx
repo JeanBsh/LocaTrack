@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import styles from './PropertyForm.module.css';
 import { PropertyType, PropertyStatus } from '@/types';
+import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import Link from 'next/link';
 
 interface PropertyFormData {
     type: PropertyType;
@@ -23,7 +23,7 @@ interface PropertyFormData {
         constructionYear: number;
     };
     status: PropertyStatus;
-    financials: {
+    financials?: {
         baseRent: number;
         charges: number;
         deposit: number;
@@ -39,27 +39,19 @@ export default function PropertyForm() {
     const onSubmit = async (data: PropertyFormData) => {
         setIsSubmitting(true);
         try {
-            const documents = [];
-            if (data.files && data.files.length > 0) {
-                for (let i = 0; i < data.files.length; i++) {
-                    const file = data.files[i];
-                    const storageRef = ref(storage, `biens/${Date.now()}_${file.name}`);
-                    const snapshot = await uploadBytes(storageRef, file);
-                    const url = await getDownloadURL(snapshot.ref);
-                    documents.push({
-                        name: file.name,
-                        url,
-                        type: file.type
-                    });
+            const propertyData = {
+                ...data,
+                features: data.features,
+                financials: {
+                    baseRent: 0,
+                    charges: 0,
+                    deposit: 0
                 }
-            }
-
-            // Remove files from data before saving to Firestore
-            const { files, ...propertyData } = data;
+            };
 
             await addDoc(collection(db, 'biens'), {
                 ...propertyData,
-                documents,
+                documents: [],
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
@@ -73,103 +65,162 @@ export default function PropertyForm() {
     };
 
     return (
-        <div className={styles.container}>
-            <form onSubmit={handleSubmit(onSubmit)} className={styles.formGrid}>
+        <div className="max-w-4xl mx-auto p-4 md:p-8">
+            {/* Header */}
+            <div className="mb-8">
+                <Link href="/biens" className="inline-flex items-center text-slate-500 hover:text-slate-800 transition-colors mb-4">
+                    <ArrowLeft size={20} className="mr-2" /> Retour aux biens
+                </Link>
+                <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">
+                    Nouveau Bien
+                </h1>
+                <p className="text-slate-500">
+                    Ajoutez un nouveau bien à votre parc immobilier
+                </p>
+            </div>
 
-                <div className={styles.section}>
-                    <h2 className={styles.sectionTitle}>Identification du Bien</h2>
+            {/* Form */}
+            <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8">
+
+                {/* Section: Identification */}
+                <div className="mb-8 pb-6 border-b border-slate-200">
+                    <h2 className="text-xl font-semibold text-slate-900 mb-6">Identification du Bien</h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-700">Type de Bien</label>
+                            <select
+                                {...register('type', { required: true })}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            >
+                                <option value="Appartement">Appartement</option>
+                                <option value="Maison">Maison</option>
+                                <option value="Bureau">Bureau</option>
+                                <option value="Local Commercial">Local Commercial</option>
+                            </select>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-700">Statut</label>
+                            <select
+                                {...register('status', { required: true })}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            >
+                                <option value="DISPONIBLE">Disponible</option>
+                                <option value="OCCUPE">Occupé</option>
+                                <option value="TRAVAUX">En Travaux</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
-                <div className={styles.field}>
-                    <label className={styles.label}>Type de Bien</label>
-                    <select {...register('type', { required: true })} className={styles.select}>
-                        <option value="Appartement">Appartement</option>
-                        <option value="Maison">Maison</option>
-                        <option value="Bureau">Bureau</option>
-                        <option value="Local Commercial">Local Commercial</option>
-                    </select>
+                {/* Section: Adresse */}
+                <div className="mb-8 pb-6 border-b border-slate-200">
+                    <h2 className="text-xl font-semibold text-slate-900 mb-6">Adresse</h2>
+
+                    <div className="space-y-6">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-700">Rue</label>
+                            <input
+                                {...register('address.street', { required: true })}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                placeholder="123 Rue de la Paix"
+                            />
+                            {errors.address?.street && <span className="text-red-600 text-sm font-medium">Requis</span>}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium text-slate-700">Code Postal</label>
+                                <input
+                                    {...register('address.zipCode', { required: true })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                    placeholder="75000"
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium text-slate-700">Ville</label>
+                                <input
+                                    {...register('address.city', { required: true })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                    placeholder="Paris"
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium text-slate-700">Pays</label>
+                                <input
+                                    {...register('address.country', { required: true })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                    defaultValue="France"
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div className={styles.field}>
-                    <label className={styles.label}>Statut</label>
-                    <select {...register('status', { required: true })} className={styles.select}>
-                        <option value="DISPONIBLE">Disponible</option>
-                        <option value="OCCUPE">Occupé</option>
-                        <option value="TRAVAUX">En Travaux</option>
-                    </select>
+                {/* Section: Caractéristiques */}
+                <div className="mb-8">
+                    <h2 className="text-xl font-semibold text-slate-900 mb-6">Caractéristiques</h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-700">Surface (m²)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                {...register('features.surface', { required: true, valueAsNumber: true })}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-700">Nombre de pièces</label>
+                            <input
+                                type="number"
+                                {...register('features.rooms', { required: true, valueAsNumber: true })}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-700">Année de construction</label>
+                            <input
+                                type="number"
+                                {...register('features.constructionYear', { required: true, valueAsNumber: true })}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            />
+                        </div>
+                    </div>
                 </div>
 
-                <div className={`${styles.field} ${styles.fullWidth}`}>
-                    <label className={styles.label}>Adresse (Rue)</label>
-                    <input {...register('address.street', { required: true })} className={styles.input} placeholder="123 Rue de la Paix" />
-                    {errors.address?.street && <span className={styles.error}>Requis</span>}
+                {/* Submit Button */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-200">
+                    <Link
+                        href="/biens"
+                        className="flex-1 sm:flex-initial px-6 py-3 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-center font-medium"
+                    >
+                        Annuler
+                    </Link>
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="flex-1 sm:flex-initial px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2 shadow-sm"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="animate-spin" size={18} />
+                                Enregistrement...
+                            </>
+                        ) : (
+                            <>
+                                <Save size={18} />
+                                Enregistrer le Bien
+                            </>
+                        )}
+                    </button>
                 </div>
-
-                <div className={styles.field}>
-                    <label className={styles.label}>Code Postal</label>
-                    <input {...register('address.zipCode', { required: true })} className={styles.input} placeholder="75000" />
-                </div>
-
-                <div className={styles.field}>
-                    <label className={styles.label}>Ville</label>
-                    <input {...register('address.city', { required: true })} className={styles.input} placeholder="Paris" />
-                </div>
-
-                <div className={styles.field}>
-                    <label className={styles.label}>Pays</label>
-                    <input {...register('address.country', { required: true })} className={styles.input} defaultValue="France" />
-                </div>
-
-                <div className={styles.section}>
-                    <h2 className={styles.sectionTitle}>Caractéristiques</h2>
-                </div>
-
-                <div className={styles.field}>
-                    <label className={styles.label}>Surface (m²)</label>
-                    <input type="number" step="0.01" {...register('features.surface', { required: true, valueAsNumber: true })} className={styles.input} />
-                </div>
-
-                <div className={styles.field}>
-                    <label className={styles.label}>Nombre de pièces</label>
-                    <input type="number" {...register('features.rooms', { required: true, valueAsNumber: true })} className={styles.input} />
-                </div>
-
-                <div className={styles.field}>
-                    <label className={styles.label}>Année de construction</label>
-                    <input type="number" {...register('features.constructionYear', { required: true, valueAsNumber: true })} className={styles.input} />
-                </div>
-
-                <div className={styles.section}>
-                    <h2 className={styles.sectionTitle}>Informations Financières</h2>
-                </div>
-
-                <div className={styles.field}>
-                    <label className={styles.label}>Loyer de base (Hors Charges)</label>
-                    <input type="number" step="0.01" {...register('financials.baseRent', { required: true, valueAsNumber: true })} className={styles.input} />
-                </div>
-
-                <div className={styles.field}>
-                    <label className={styles.label}>Provisions sur Charges</label>
-                    <input type="number" step="0.01" {...register('financials.charges', { required: true, valueAsNumber: true })} className={styles.input} />
-                </div>
-
-                <div className={styles.field}>
-                    <label className={styles.label}>Dépôt de Garantie</label>
-                    <input type="number" step="0.01" {...register('financials.deposit', { required: true, valueAsNumber: true })} className={styles.input} />
-                </div>
-
-                <div className={styles.section}>
-                    <h2 className={styles.sectionTitle}>Documents</h2>
-                </div>
-
-                <div className={`${styles.field} ${styles.fullWidth}`}>
-                    <label className={styles.label}>Documents (Diagnostics, Plans...)</label>
-                    <input type="file" multiple {...register('files')} className={styles.input} />
-                </div>
-
-                <button type="submit" disabled={isSubmitting} className={styles.submitButton}>
-                    {isSubmitting ? 'Enregistrement...' : 'Enregistrer le Bien'}
-                </button>
             </form>
         </div>
     );

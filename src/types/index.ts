@@ -59,11 +59,19 @@ export interface Guarantor {
 
 export type TenantStatus = 'ACTIF' | 'ARCHIVE';
 
+export interface Roommate {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+}
+
 export interface Tenant {
     id: string;
     personalInfo: TenantPersonalInfo;
     adminInfo: TenantAdminInfo;
     guarantors: Guarantor[];
+    roommates?: Roommate[];
     status: TenantStatus;
     createdAt: Date;
     updatedAt: Date;
@@ -90,6 +98,7 @@ export interface Lease {
     id: string;
     propertyId: string;
     tenantId: string;
+    type?: 'MEUBLE' | 'NON_MEUBLE';
     dates: LeaseDates;
     financials: LeaseFinancials;
     indexation: LeaseIndexation;

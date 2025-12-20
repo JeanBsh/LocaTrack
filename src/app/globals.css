@@ -1,7 +1,42 @@
 @import "tailwindcss";
 
+@theme {
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+}
+
+/* 
+  En v4, on utilise @layer base directement.
+  Plus besoin de @tailwind base/components/utilities
+*/
+
 @layer base {
-  body {
-    @apply bg-gray-50 text-slate-900;
-  }
+    * {
+        @apply border-gray-200;
+    }
+
+    body {
+        @apply bg-slate-50 text-slate-900 antialiased;
+    }
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-300;
 }

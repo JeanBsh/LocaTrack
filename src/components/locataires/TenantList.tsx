@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { Tenant } from '@/types';
 import Link from 'next/link';
 import { User, Phone, Mail, ShieldCheck, Loader2 } from 'lucide-react';
@@ -12,17 +13,29 @@ export default function TenantList() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const q = query(collection(db, 'locataires'), orderBy('createdAt', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const tenantData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })) as Tenant[];
-            setTenants(tenantData);
-            setLoading(false);
+        let unsubscribeSnapshot: (() => void) | undefined;
+
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+
+            const q = query(collection(db, 'locataires'), orderBy('createdAt', 'desc'));
+            unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+                const tenantData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                })) as Tenant[];
+                setTenants(tenantData);
+                setLoading(false);
+            });
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeAuth();
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
+        };
     }, []);
 
     if (loading) {

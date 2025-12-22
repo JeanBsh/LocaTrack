@@ -3,8 +3,10 @@
 import { TrendingUp, Wallet, AlertCircle, Users, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { Property, Lease } from '@/types';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
     const [stats, setStats] = useState({
@@ -14,45 +16,55 @@ export default function Dashboard() {
         unpaidCount: 0
     });
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
 
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                // 1. Fetch properties for Occupancy Rate
-                const propertiesSnapshot = await getDocs(collection(db, 'biens'));
-                const properties = propertiesSnapshot.docs.map(doc => doc.data() as Property);
-
-                const totalProperties = properties.length;
-                const occupiedProperties = properties.filter(p => p.status === 'OCCUPE').length;
-                const occupancyRate = totalProperties > 0 ? Math.round((occupiedProperties / totalProperties) * 100) : 0;
-
-                // 2. Fetch active leases for Monthly Revenue
-                const leasesSnapshot = await getDocs(collection(db, 'leases'));
-                const leases = leasesSnapshot.docs.map(doc => doc.data() as Lease);
-
-                const monthlyRevenue = leases.reduce((acc, lease) => {
-                    return acc + (lease.financials.currentRent || 0) + (lease.financials.currentCharges || 0);
-                }, 0);
-
-                // 3. Unpaid - Placeholder logic
-                const unpaidAmount = 0;
-                const unpaidCount = 0;
-
-                setStats({
-                    occupancyRate,
-                    monthlyRevenue,
-                    unpaidAmount,
-                    unpaidCount
-                });
-            } catch (error) {
-                console.error("Error fetching dashboard stats:", error);
-            } finally {
-                setLoading(false);
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                router.push('/login');
+                return;
             }
-        };
 
-        fetchStats();
-    }, []);
+            const fetchStats = async () => {
+                try {
+                    // 1. Fetch properties for Occupancy Rate
+                    const propertiesSnapshot = await getDocs(collection(db, 'biens'));
+                    const properties = propertiesSnapshot.docs.map(doc => doc.data() as Property);
+
+                    const totalProperties = properties.length;
+                    const occupiedProperties = properties.filter(p => p.status === 'OCCUPE').length;
+                    const occupancyRate = totalProperties > 0 ? Math.round((occupiedProperties / totalProperties) * 100) : 0;
+
+                    // 2. Fetch active leases for Monthly Revenue
+                    const leasesSnapshot = await getDocs(collection(db, 'leases'));
+                    const leases = leasesSnapshot.docs.map(doc => doc.data() as Lease);
+
+                    const monthlyRevenue = leases.reduce((acc, lease) => {
+                        return acc + (lease.financials.currentRent || 0) + (lease.financials.currentCharges || 0);
+                    }, 0);
+
+                    // 3. Unpaid - Placeholder logic
+                    const unpaidAmount = 0;
+                    const unpaidCount = 0;
+
+                    setStats({
+                        occupancyRate,
+                        monthlyRevenue,
+                        unpaidAmount,
+                        unpaidCount
+                    });
+                } catch (error) {
+                    console.error("Error fetching dashboard stats:", error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            fetchStats();
+        });
+
+        return () => unsubscribe();
+    }, [router]);
 
     if (loading) {
         return (
@@ -152,3 +164,4 @@ export default function Dashboard() {
         </div>
     );
 }
+

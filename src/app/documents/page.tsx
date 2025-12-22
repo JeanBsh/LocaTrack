@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { Tenant, Lease, Property } from '@/types';
 import RentReceiptGenerator from '@/components/documents/RentReceiptGenerator';
 import RentCertificateGenerator from '@/components/documents/RentCertificateGenerator';
@@ -18,26 +19,41 @@ export default function DocumentsPage() {
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        // Suppression du orderBy pour éviter les erreurs d'index sur champs imbriqués
-        const unsubscribeTenants = onSnapshot(collection(db, 'locataires'), (snapshot) => {
-            const tenantsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
-            // Tri côté client
-            tenantsData.sort((a, b) => a.personalInfo.lastName.localeCompare(b.personalInfo.lastName));
-            setTenants(tenantsData);
-        });
+        let unsubscribeTenants: (() => void) | undefined;
+        let unsubscribeLeases: (() => void) | undefined;
+        let unsubscribeProperties: (() => void) | undefined;
 
-        const unsubscribeLeases = onSnapshot(collection(db, 'leases'), (snapshot) => {
-            setLeases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lease)));
-        });
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                // If not authenticated, we could redirect or just stop. 
+                // Since this page is likely wrapped in a layout that doesn't force auth globally yet, 
+                // we'll just stop loading. The Dashboard redirect handles the main entry point.
+                setLoading(false);
+                return;
+            }
 
-        const unsubscribeProperties = onSnapshot(collection(db, 'biens'), (snapshot) => {
-            setProperties(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property)));
+            // Suppression du orderBy pour éviter les erreurs d'index sur champs imbriqués
+            unsubscribeTenants = onSnapshot(collection(db, 'locataires'), (snapshot) => {
+                const tenantsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+                // Tri côté client
+                tenantsData.sort((a, b) => a.personalInfo.lastName.localeCompare(b.personalInfo.lastName));
+                setTenants(tenantsData);
+            });
+
+            unsubscribeLeases = onSnapshot(collection(db, 'leases'), (snapshot) => {
+                setLeases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lease)));
+            });
+
+            unsubscribeProperties = onSnapshot(collection(db, 'biens'), (snapshot) => {
+                setProperties(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property)));
+            });
         });
 
         return () => {
-            unsubscribeTenants();
-            unsubscribeLeases();
-            unsubscribeProperties();
+            unsubscribeAuth();
+            if (unsubscribeTenants) unsubscribeTenants();
+            if (unsubscribeLeases) unsubscribeLeases();
+            if (unsubscribeProperties) unsubscribeProperties();
         };
     }, []);
 

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { Property } from '@/types';
 import styles from './PropertyList.module.css';
 import Link from 'next/link';
@@ -12,17 +13,29 @@ export default function PropertyList() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const q = query(collection(db, 'biens'), orderBy('createdAt', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const props = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })) as Property[];
-            setProperties(props);
-            setLoading(false);
+        let unsubscribeSnapshot: (() => void) | undefined;
+
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+
+            const q = query(collection(db, 'biens'), orderBy('createdAt', 'desc'));
+            unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+                const props = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                })) as Property[];
+                setProperties(props);
+                setLoading(false);
+            });
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeAuth();
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
+        };
     }, []);
 
     if (loading) return <div>Chargement...</div>;

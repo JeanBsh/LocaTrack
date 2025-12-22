@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { Tenant, Lease, Property } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -37,47 +38,57 @@ export default function TenantDetail({ tenantId }: TenantEditProps) {
     });
 
     useEffect(() => {
-        const fetchData = async () => {
-            if (!tenantId) return;
-            try {
-                // 1. Fetch Tenant
-                const tenantRef = doc(db, 'locataires', tenantId);
-                const tenantSnap = await getDoc(tenantRef);
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                // router.push('/login'); // Optional, or let the parent/layout handle it.
+                setLoading(false);
+                return;
+            }
 
-                if (tenantSnap.exists()) {
-                    const tenantData = { id: tenantSnap.id, ...tenantSnap.data() } as Tenant;
-                    setTenant(tenantData);
-                    reset(tenantData);
+            const fetchData = async () => {
+                if (!tenantId) return;
+                try {
+                    // 1. Fetch Tenant
+                    const tenantRef = doc(db, 'locataires', tenantId);
+                    const tenantSnap = await getDoc(tenantRef); // This will fail if unauth, so we check auth first
 
-                    // 2. Fetch Active Lease
-                    const qLease = query(collection(db, 'leases'), where('tenantId', '==', tenantId));
-                    const leaseSnapshot = await getDocs(qLease);
+                    if (tenantSnap.exists()) {
+                        const tenantData = { id: tenantSnap.id, ...tenantSnap.data() } as Tenant;
+                        setTenant(tenantData);
+                        reset(tenantData);
 
-                    if (!leaseSnapshot.empty) {
-                        const leaseDoc = leaseSnapshot.docs[0];
-                        const leaseData = { id: leaseDoc.id, ...leaseDoc.data() } as Lease;
-                        setLease(leaseData);
+                        // 2. Fetch Active Lease
+                        const qLease = query(collection(db, 'leases'), where('tenantId', '==', tenantId));
+                        const leaseSnapshot = await getDocs(qLease);
 
-                        // 3. Fetch Property
-                        if (leaseData.propertyId) {
-                            const propRef = doc(db, 'biens', leaseData.propertyId);
-                            const propSnap = await getDoc(propRef);
-                            if (propSnap.exists()) {
-                                setProperty({ id: propSnap.id, ...propSnap.data() } as Property);
+                        if (!leaseSnapshot.empty) {
+                            const leaseDoc = leaseSnapshot.docs[0];
+                            const leaseData = { id: leaseDoc.id, ...leaseDoc.data() } as Lease;
+                            setLease(leaseData);
+
+                            // 3. Fetch Property
+                            if (leaseData.propertyId) {
+                                const propRef = doc(db, 'biens', leaseData.propertyId);
+                                const propSnap = await getDoc(propRef);
+                                if (propSnap.exists()) {
+                                    setProperty({ id: propSnap.id, ...propSnap.data() } as Property);
+                                }
                             }
                         }
+                    } else {
+                        console.log("No such tenant!");
+                        router.push('/locataires');
                     }
-                } else {
-                    console.log("No such tenant!");
-                    router.push('/locataires');
+                } catch (error) {
+                    console.error("Error fetching data:", error);
+                } finally {
+                    setLoading(false);
                 }
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
+            };
+            fetchData();
+        });
+
+        return () => unsubscribeAuth();
     }, [tenantId, router, reset]);
 
     const onSubmit = async (data: Tenant) => {

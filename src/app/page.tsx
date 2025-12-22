@@ -28,7 +28,8 @@ export default function Dashboard() {
             const fetchStats = async () => {
                 try {
                     // 1. Fetch properties for Occupancy Rate
-                    const propertiesSnapshot = await getDocs(collection(db, 'biens'));
+                    const qProperties = query(collection(db, 'biens'), where('userId', '==', user.uid));
+                    const propertiesSnapshot = await getDocs(qProperties);
                     const properties = propertiesSnapshot.docs.map(doc => doc.data() as Property);
 
                     const totalProperties = properties.length;
@@ -36,7 +37,8 @@ export default function Dashboard() {
                     const occupancyRate = totalProperties > 0 ? Math.round((occupiedProperties / totalProperties) * 100) : 0;
 
                     // 2. Fetch active leases for Monthly Revenue
-                    const leasesSnapshot = await getDocs(collection(db, 'leases'));
+                    const qLeases = query(collection(db, 'leases'), where('userId', '==', user.uid));
+                    const leasesSnapshot = await getDocs(qLeases);
                     const leases = leasesSnapshot.docs.map(doc => doc.data() as Lease);
 
                     const monthlyRevenue = leases.reduce((acc, lease) => {

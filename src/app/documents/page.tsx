@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Tenant, Lease, Property } from '@/types';
@@ -33,18 +33,22 @@ export default function DocumentsPage() {
             }
 
             // Suppression du orderBy pour éviter les erreurs d'index sur champs imbriqués
-            unsubscribeTenants = onSnapshot(collection(db, 'locataires'), (snapshot) => {
+            // Suppression du orderBy pour éviter les erreurs d'index sur champs imbriqués
+            const qTenants = query(collection(db, 'locataires'), where('userId', '==', user.uid));
+            unsubscribeTenants = onSnapshot(qTenants, (snapshot) => {
                 const tenantsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
                 // Tri côté client
                 tenantsData.sort((a, b) => a.personalInfo.lastName.localeCompare(b.personalInfo.lastName));
                 setTenants(tenantsData);
             });
 
-            unsubscribeLeases = onSnapshot(collection(db, 'leases'), (snapshot) => {
+            const qLeases = query(collection(db, 'leases'), where('userId', '==', user.uid));
+            unsubscribeLeases = onSnapshot(qLeases, (snapshot) => {
                 setLeases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lease)));
             });
 
-            unsubscribeProperties = onSnapshot(collection(db, 'biens'), (snapshot) => {
+            const qProperties = query(collection(db, 'biens'), where('userId', '==', user.uid));
+            unsubscribeProperties = onSnapshot(qProperties, (snapshot) => {
                 setProperties(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property)));
             });
         });

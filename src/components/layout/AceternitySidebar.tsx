@@ -1,10 +1,12 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { LayoutDashboard, Building2, Users, FileText, PieChart, LogOut } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { auth } from "@/lib/firebase";
 
 export default function AceternitySidebar({ children }: { children: React.ReactNode }) {
     const links = [
@@ -45,6 +47,29 @@ export default function AceternitySidebar({ children }: { children: React.ReactN
         },
     ];
     const [open, setOpen] = useState(false);
+    const pathname = usePathname();
+    const [user, setUser] = useState<any>(null); // Using any or firebase User type would require import
+
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+            setUser(currentUser);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    if (pathname === "/login" || pathname === "/register") {
+        return <>{children}</>;
+    }
+
+    const handleLogout = async () => {
+        try {
+            await auth.signOut();
+            window.location.href = '/login';
+        } catch (error) {
+            console.error("Erreur lors de la déconnexion", error);
+        }
+    };
+
     return (
         <div
             className={cn(
@@ -63,15 +88,35 @@ export default function AceternitySidebar({ children }: { children: React.ReactN
                         </div>
                     </div>
                     <div>
-                        <SidebarLink
-                            link={{
-                                label: "Déconnexion",
-                                href: "#",
-                                icon: (
-                                    <LogOut className="text-neutral-700 h-5 w-5 flex-shrink-0" />
-                                ),
-                            }}
-                        />
+                        {user && (
+                            <div className="mb-2 border-b pb-2 border-gray-100">
+                                <SidebarLink
+                                    link={{
+                                        label: user.email || "Utilisateur",
+                                        href: "#",
+                                        icon: (
+                                            <div className="h-5 w-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                                                {user.email ? user.email[0].toUpperCase() : "U"}
+                                            </div>
+                                        ),
+                                    }}
+                                />
+                            </div>
+                        )}
+                        <div
+                            className="cursor-pointer"
+                            onClick={handleLogout}
+                        >
+                            <SidebarLink
+                                link={{
+                                    label: "Déconnexion",
+                                    href: "#",
+                                    icon: (
+                                        <LogOut className="text-neutral-700 h-5 w-5 flex-shrink-0" />
+                                    ),
+                                }}
+                            />
+                        </div>
                     </div>
                 </SidebarBody>
             </Sidebar>

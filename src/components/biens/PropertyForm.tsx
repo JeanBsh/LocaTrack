@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { PropertyType, PropertyStatus } from '@/types';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
@@ -39,9 +39,16 @@ export default function PropertyForm() {
     const onSubmit = async (data: PropertyFormData) => {
         setIsSubmitting(true);
         try {
+            const user = auth.currentUser;
+            if (!user) {
+                alert("Vous devez être connecté pour créer un bien.");
+                return;
+            }
+
             const propertyData = {
                 ...data,
                 features: data.features,
+                userId: user.uid,
                 financials: {
                     baseRent: 0,
                     charges: 0,

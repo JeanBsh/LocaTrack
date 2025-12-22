@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { addDoc, collection, serverTimestamp, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { addDoc, collection, serverTimestamp, getDocs, doc, updateDoc, writeBatch, query, where } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Tenant, Property } from '@/types';
 import { Plus, Trash2, Save, Loader2, Home } from 'lucide-react';
@@ -31,8 +31,12 @@ export default function TenantForm() {
     // Chargement des biens existants
     useEffect(() => {
         const fetchProperties = async () => {
+            const user = auth.currentUser;
+            if (!user) return;
+
             try {
-                const querySnapshot = await getDocs(collection(db, 'biens'));
+                const q = query(collection(db, 'biens'), where('userId', '==', user.uid));
+                const querySnapshot = await getDocs(q);
                 const loadedProperties = querySnapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
@@ -49,6 +53,10 @@ export default function TenantForm() {
         defaultValues: {
             status: 'ACTIF',
             guarantors: [],
+            adminInfo: {
+                birthDate: undefined, // Let the date input handle it
+                idNumber: ''
+            },
             leaseDetails: {
                 duration: 36 // Durée par défaut 3 ans
             }
@@ -82,6 +90,12 @@ export default function TenantForm() {
     const onSubmit = async (data: TenantFormData) => {
         setIsSubmitting(true);
         try {
+            const user = auth.currentUser;
+            if (!user) {
+                alert("Vous devez être connecté.");
+                return;
+            }
+
             // 1. Création du Locataire
             const tenantRef = await addDoc(collection(db, 'locataires'), {
                 personalInfo: data.personalInfo,
@@ -89,6 +103,7 @@ export default function TenantForm() {
                 guarantors: data.guarantors,
                 roommates: data.roommates || [],
                 status: data.status,
+                userId: user.uid,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
@@ -99,6 +114,7 @@ export default function TenantForm() {
                 const leaseData = {
                     propertyId: data.selectedPropertyId,
                     tenantId: tenantRef.id,
+                    userId: user.uid,
                     type: data.leaseDetails.type,
                     dates: {
                         start: new Date(data.leaseDetails.startDate),
@@ -280,7 +296,8 @@ export default function TenantForm() {
             </div>
 
             {/* Informations Administratives */}
-            {/* <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+            {/* Informations Administratives */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                 <h2 className="text-xl font-semibold text-slate-800 mb-4 border-b pb-2">Informations Administratives</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -300,7 +317,7 @@ export default function TenantForm() {
                         />
                     </div>
                 </div>
-            </div> */}
+            </div>
 
             {/* Garants */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">

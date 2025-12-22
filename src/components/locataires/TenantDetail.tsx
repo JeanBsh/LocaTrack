@@ -54,6 +54,14 @@ export default function TenantDetail({ tenantId }: TenantEditProps) {
 
                     if (tenantSnap.exists()) {
                         const tenantData = { id: tenantSnap.id, ...tenantSnap.data() } as Tenant;
+
+                        // Verification que le locataire appartient bien à l'utilisateur connecté
+                        if (tenantData.userId !== user.uid) {
+                            console.error("Unauthorized access to tenant");
+                            router.push('/locataires');
+                            return;
+                        }
+
                         setTenant(tenantData);
                         reset(tenantData);
 

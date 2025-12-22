@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Tenant } from '@/types';
@@ -21,7 +21,7 @@ export default function TenantList() {
                 return;
             }
 
-            const q = query(collection(db, 'locataires'), orderBy('createdAt', 'desc'));
+            const q = query(collection(db, 'locataires'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
             unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
                 const tenantData = snapshot.docs.map(doc => ({
                     id: doc.id,

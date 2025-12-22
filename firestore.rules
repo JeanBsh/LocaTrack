@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Fonction helper pour vérifier si l'utilisateur est connecté
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Fonction helper pour vérifier que l'utilisateur accède à ses propres données
+    // Vérifie que le champ 'userId' du document correspond à l'UID de l'utilisateur connecté
+    function isOwner() {
+      return isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Fonction helper pour vérifier la création
+    // Vérifie que le champ 'userId' dans les nouvelles données correspond à l'UID de l'utilisateur connecté
+    function isValidCreate() {
+      return isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Règles pour la collection 'biens' (Properties)
+    match /biens/{document} {
+      allow read: if isOwner();
+      allow create: if isValidCreate();
+      allow update, delete: if isOwner();
+    }
+
+    // Règles pour la collection 'locataires' (Tenants)
+    match /locataires/{document} {
+      allow read: if isOwner();
+      allow create: if isValidCreate();
+      allow update, delete: if isOwner();
+    }
+
+    // Règles pour la collection 'leases' (Baux)
+    match /leases/{document} {
+      allow read: if isOwner();
+      allow create: if isValidCreate();
+      allow update, delete: if isOwner();
+    }
+  }
+}

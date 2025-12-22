@@ -28,6 +28,7 @@ export interface PropertyDocument {
 
 export interface Property {
     id: string;
+    userId?: string;
     type: PropertyType;
     address: Address;
     features: PropertyFeatures;
@@ -68,6 +69,7 @@ export interface Roommate {
 
 export interface Tenant {
     id: string;
+    userId?: string;
     personalInfo: TenantPersonalInfo;
     adminInfo: TenantAdminInfo;
     guarantors: Guarantor[];
@@ -96,6 +98,7 @@ export interface LeaseIndexation {
 
 export interface Lease {
     id: string;
+    userId?: string;
     propertyId: string;
     tenantId: string;
     type?: 'MEUBLE' | 'NON_MEUBLE';

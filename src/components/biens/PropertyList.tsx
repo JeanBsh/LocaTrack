@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Property } from '@/types';
@@ -21,7 +21,7 @@ export default function PropertyList() {
                 return;
             }
 
-            const q = query(collection(db, 'biens'), orderBy('createdAt', 'desc'));
+            const q = query(collection(db, 'biens'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
             unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
                 const props = snapshot.docs.map(doc => ({
                     id: doc.id,

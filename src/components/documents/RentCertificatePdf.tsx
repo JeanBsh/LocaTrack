@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tenant, Property, Lease } from '@/types';
@@ -82,17 +82,17 @@ interface RentCertificatePdfProps {
     tenant: Tenant;
     property: Property;
     lease: Lease;
+    ownerName?: string;
+    signatureUrl?: string;
+    logoUrl?: string;
 }
 
-export const RentCertificatePdf = ({ tenant, property, lease }: RentCertificatePdfProps) => {
+export const RentCertificatePdf = ({ tenant, property, lease, ownerName: ownerNameProp, signatureUrl, logoUrl }: RentCertificatePdfProps) => {
     const today = new Date();
     const dateOfIssue = format(today, 'dd/MM/yyyy');
 
-    // Check if tenant is up to date (Placeholder logic - in a real app this would check payment status)
-    // For an "Attestation", we generally assume they are up to date if we are generating it.
-
-    // TODO: Owner info from settings
-    const ownerName = "Monsieur le Propriétaire";
+    // Use owner name from profile or fallback to placeholder
+    const ownerName = ownerNameProp || "Monsieur le Propriétaire";
 
     // Safe date conversion helper
     const formatDate = (date: any) => {
@@ -114,6 +114,9 @@ export const RentCertificatePdf = ({ tenant, property, lease }: RentCertificateP
         <Document>
             <Page size="A4" style={styles.page}>
                 <View style={styles.header}>
+                    {logoUrl && (
+                        <Image src={logoUrl} style={{ width: 60, height: 60, marginBottom: 10, objectFit: 'contain' }} />
+                    )}
                     <Text style={styles.title}>Attestation de Loyer</Text>
                     <Text style={styles.subtitle}>Document valant justificatif de domicile</Text>
                 </View>
@@ -164,9 +167,12 @@ export const RentCertificatePdf = ({ tenant, property, lease }: RentCertificateP
 
                 <View style={styles.signatureSection}>
                     <Text style={{ marginBottom: 10 }}>Fait à {property.address.city}, le {dateOfIssue}</Text>
-                    <Text style={{ fontWeight: 'bold', marginBottom: 50 }}>Le Bailleur</Text>
-                    {/* Placeholder for Signature */}
-                    <Text style={{ color: '#cbd5e1', fontSize: 10 }}>[Signature]</Text>
+                    <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>Le Bailleur</Text>
+                    {signatureUrl ? (
+                        <Image src={signatureUrl} style={{ width: 120, height: 60, objectFit: 'contain' }} />
+                    ) : (
+                        <Text style={{ color: '#cbd5e1', fontSize: 10, marginTop: 40 }}>[Signature]</Text>
+                    )}
                 </View>
 
                 <View style={styles.footer}>

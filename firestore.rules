@@ -39,5 +39,14 @@ service cloud.firestore {
       allow create: if isValidCreate();
       allow update, delete: if isOwner();
     }
+
+    // Règles pour la collection 'profiles' (Profils utilisateur)
+    // Le document ID est l'UID de l'utilisateur
+    match /profiles/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
   }
 }

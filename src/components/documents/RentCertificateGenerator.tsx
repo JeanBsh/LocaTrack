@@ -1,9 +1,21 @@
 'use client';
 
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import { RentCertificatePdf } from './RentCertificatePdf';
-import { Tenant, Property, Lease } from '@/types';
+import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { Tenant, Property, Lease, UserProfile } from '@/types';
 import { FileCheck, Loader2, Download } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+
+const PDFDownloadLink = dynamic(
+    () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
+    { ssr: false, loading: () => <Loader2 className="animate-spin" size={16} /> }
+);
+
+const RentCertificatePdf = dynamic(
+    () => import('./RentCertificatePdf').then((mod) => mod.RentCertificatePdf),
+    { ssr: false }
+);
 
 interface CertificateGeneratorProps {
     tenant: Tenant;
@@ -12,6 +24,29 @@ interface CertificateGeneratorProps {
 }
 
 export default function RentCertificateGenerator({ tenant, property, lease }: CertificateGeneratorProps) {
+    const [ownerInfo, setOwnerInfo] = useState<{ name: string; signatureUrl?: string; logoUrl?: string } | undefined>(undefined);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const profileRef = doc(db, 'profiles', user.uid);
+            const profileSnap = await getDoc(profileRef);
+
+            if (profileSnap.exists()) {
+                const profile = profileSnap.data() as UserProfile;
+                setOwnerInfo({
+                    name: profile.ownerInfo.name,
+                    signatureUrl: profile.signatureUrl,
+                    logoUrl: profile.logoUrl,
+                });
+            }
+        };
+
+        fetchProfile();
+    }, []);
+
     if (!tenant || !property || !lease) return null;
 
     return (
@@ -27,7 +62,7 @@ export default function RentCertificateGenerator({ tenant, property, lease }: Ce
             </div>
 
             <PDFDownloadLink
-                document={<RentCertificatePdf tenant={tenant} property={property} lease={lease} />}
+                document={<RentCertificatePdf tenant={tenant} property={property} lease={lease} ownerName={ownerInfo?.name} signatureUrl={ownerInfo?.signatureUrl} logoUrl={ownerInfo?.logoUrl} />}
                 fileName={`Attestation_${tenant.personalInfo.lastName}_${tenant.personalInfo.firstName}.pdf`}
                 className="inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow-md flex-shrink-0"
             >

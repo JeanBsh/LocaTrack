@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tenant, Property, Lease } from '@/types';
@@ -72,13 +72,22 @@ const styles = StyleSheet.create({
     }
 });
 
+interface OwnerInfo {
+    name: string;
+    address: string;
+    email?: string;
+    signatureUrl?: string;
+    logoUrl?: string;
+}
+
 interface LeaseContractPdfProps {
     tenant: Tenant;
     property: Property;
     lease: Lease;
+    ownerInfo?: OwnerInfo;
 }
 
-export const LeaseContractPdf = ({ tenant, property, lease }: LeaseContractPdfProps) => {
+export const LeaseContractPdf = ({ tenant, property, lease, ownerInfo: ownerInfoProp }: LeaseContractPdfProps) => {
     // Helper for date formatting
     const formatDate = (date: any) => {
         if (!date) return 'N/A';
@@ -92,8 +101,8 @@ export const LeaseContractPdf = ({ tenant, property, lease }: LeaseContractPdfPr
         }
     };
 
-    // Placeholder Owner Info
-    const ownerInfo = {
+    // Use owner info from profile or fallback to placeholder
+    const ownerInfo = ownerInfoProp || {
         name: "Monsieur le Propriétaire",
         address: "123 Avenue de l'Immobilier, 75000 Paris",
         email: "proprietaire@example.com"
@@ -105,6 +114,12 @@ export const LeaseContractPdf = ({ tenant, property, lease }: LeaseContractPdfPr
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                {/* Logo */}
+                {ownerInfo.logoUrl && (
+                    <View style={{ alignItems: 'center', marginBottom: 15 }}>
+                        <Image src={ownerInfo.logoUrl} style={{ width: 80, height: 80, objectFit: 'contain' }} />
+                    </View>
+                )}
                 <Text style={styles.title}>CONTRAT DE LOCATION</Text>
                 <Text style={{ textAlign: 'center', fontSize: 10, marginBottom: 20, color: '#64748b' }}>
                     Soumis au titre Ier de la loi n° 89-462 du 6 juillet 1989
@@ -205,12 +220,18 @@ export const LeaseContractPdf = ({ tenant, property, lease }: LeaseContractPdfPr
                 <View style={styles.signatureSection}>
                     <View style={styles.signatureBox}>
                         <Text style={styles.bold}>Le BAILLEUR</Text>
-                        <Text style={{ fontSize: 8, fontStyle: 'italic', marginBottom: 30 }}>(Signature précédée de la mention "Lu et approuvé")</Text>
+                        <Text style={{ fontSize: 8, fontStyle: 'italic', marginBottom: 10 }}>(Signature précédée de la mention "Lu et approuvé")</Text>
+                        {ownerInfo.signatureUrl ? (
+                            <Image src={ownerInfo.signatureUrl} style={{ width: 100, height: 50, objectFit: 'contain', marginBottom: 5 }} />
+                        ) : (
+                            <View style={{ height: 30 }} />
+                        )}
                         <Text>{ownerInfo.name}</Text>
                     </View>
                     <View style={styles.signatureBox}>
                         <Text style={styles.bold}>Le LOCATAIRE</Text>
-                        <Text style={{ fontSize: 8, fontStyle: 'italic', marginBottom: 30 }}>(Signature précédée de la mention "Lu et approuvé")</Text>
+                        <Text style={{ fontSize: 8, fontStyle: 'italic', marginBottom: 10 }}>(Signature précédée de la mention "Lu et approuvé")</Text>
+                        <View style={{ height: 30 }} />
                         <Text>{tenant.personalInfo.firstName} {tenant.personalInfo.lastName}</Text>
                     </View>
                 </View>

@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import { RentReceiptPdf } from './RentReceiptPdf';
-import { Tenant, Property, Lease } from '@/types';
+import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { Tenant, Property, Lease, UserProfile } from '@/types';
 import { Receipt, Loader2, Calendar, Download } from 'lucide-react';
 import { format } from 'date-fns';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+
+// Dynamic import of the entire PDF download component
+const PdfDownloader = dynamic(() => import('./PdfDownloader').then(mod => mod.RentReceiptDownloader), {
+    ssr: false,
+    loading: () => <Loader2 className="animate-spin" size={16} />
+});
 
 interface ReceiptGeneratorProps {
     tenant: Tenant;
@@ -15,6 +22,29 @@ interface ReceiptGeneratorProps {
 
 export default function RentReceiptGenerator({ tenant, property, lease }: ReceiptGeneratorProps) {
     const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+    const [ownerInfo, setOwnerInfo] = useState<{ name: string; address: string; signatureUrl?: string; logoUrl?: string } | undefined>(undefined);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const profileRef = doc(db, 'profiles', user.uid);
+            const profileSnap = await getDoc(profileRef);
+
+            if (profileSnap.exists()) {
+                const profile = profileSnap.data() as UserProfile;
+                setOwnerInfo({
+                    name: profile.ownerInfo.name,
+                    address: `${profile.ownerInfo.address}\n${profile.ownerInfo.zipCode} ${profile.ownerInfo.city}`,
+                    signatureUrl: profile.signatureUrl,
+                    logoUrl: profile.logoUrl,
+                });
+            }
+        };
+
+        fetchProfile();
+    }, []);
 
     const getPeriodDate = () => {
         const [year, month] = selectedMonth.split('-');
@@ -45,16 +75,13 @@ export default function RentReceiptGenerator({ tenant, property, lease }: Receip
                 </div>
             </div>
 
-            <PDFDownloadLink
-                document={<RentReceiptPdf tenant={tenant} property={property} lease={lease} period={periodDate} />}
-                fileName={`Quittance_${tenant.personalInfo.lastName}_${format(periodDate, 'MM-yyyy')}.pdf`}
-                className="inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow-md flex-shrink-0"
-            >
-                {({ loading }) => (loading ?
-                    <Loader2 className="animate-spin" size={16} /> :
-                    <Download size={16} />
-                )}
-            </PDFDownloadLink>
+            <PdfDownloader
+                tenant={tenant}
+                property={property}
+                lease={lease}
+                period={periodDate}
+                ownerInfo={ownerInfo}
+            />
         </div>
     );
 }

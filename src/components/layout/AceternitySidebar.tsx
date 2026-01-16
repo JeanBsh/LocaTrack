@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
-import { LayoutDashboard, Building2, Users, FileText, PieChart, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, Users, FileText, PieChart, LogOut, UserCog } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -43,6 +43,13 @@ export default function AceternitySidebar({ children }: { children: React.ReactN
             href: "/finance",
             icon: (
                 <PieChart className="text-neutral-700 h-5 w-5 flex-shrink-0" />
+            ),
+        },
+        {
+            label: "Profil",
+            href: "/profil",
+            icon: (
+                <UserCog className="text-neutral-700 h-5 w-5 flex-shrink-0" />
             ),
         },
     ];

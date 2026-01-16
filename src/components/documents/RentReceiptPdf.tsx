@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tenant, Property, Lease } from '@/types';
@@ -155,14 +155,22 @@ const styles = StyleSheet.create({
     },
 });
 
+interface OwnerInfo {
+    name: string;
+    address: string;
+    signatureUrl?: string;
+    logoUrl?: string;
+}
+
 interface RentReceiptPdfProps {
     tenant: Tenant;
     property: Property;
     lease: Lease;
     period: Date;
+    ownerInfo?: OwnerInfo;
 }
 
-export const RentReceiptPdf = ({ tenant, property, lease, period }: RentReceiptPdfProps) => {
+export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: ownerInfoProp }: RentReceiptPdfProps) => {
     const startOfMonth = new Date(period.getFullYear(), period.getMonth(), 1);
     const endOfMonth = new Date(period.getFullYear(), period.getMonth() + 1, 0);
 
@@ -176,9 +184,9 @@ export const RentReceiptPdf = ({ tenant, property, lease, period }: RentReceiptP
     const charges = lease.financials.currentCharges;
     const total = rent + charges;
 
-    // TODO: Proprietor info should eventually come from global settings
-    const ownerInfo = {
-        name: "Monsieur le Propriétaire", // Placeholder, replace with dynamic data if available
+    // Use owner info from profile or fallback to placeholder
+    const ownerInfo = ownerInfoProp || {
+        name: "Monsieur le Propriétaire",
         address: "Adresse du Propriétaire\n75000 PARIS",
     };
 
@@ -188,6 +196,9 @@ export const RentReceiptPdf = ({ tenant, property, lease, period }: RentReceiptP
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
+                        {ownerInfo.logoUrl && (
+                            <Image src={ownerInfo.logoUrl} style={{ width: 60, height: 60, marginBottom: 8, objectFit: 'contain' }} />
+                        )}
                         <Text style={styles.title}>Quittance de Loyer</Text>
                         <Text style={styles.docNumber}>N° REF-{format(period, 'yyyyMM')}-{tenant.id.slice(0, 4)}</Text>
                     </View>
@@ -274,12 +285,15 @@ export const RentReceiptPdf = ({ tenant, property, lease, period }: RentReceiptP
                 <View style={styles.footerContainer}>
                     <View style={styles.signatureBox}>
                         <Text>Fait à {property.address.city}, le {dateOfIssue}</Text>
-                        <Text style={[styles.signatureTitle, { marginTop: 10 }]}>Le Bailleur, avec signature</Text>
-                        {/* Placeholder for Signature Image if available */}
+                        <Text style={[styles.signatureTitle, { marginTop: 10 }]}>Le Bailleur</Text>
+                        {ownerInfo.signatureUrl ? (
+                            <Image src={ownerInfo.signatureUrl} style={{ width: 120, height: 60, objectFit: 'contain' }} />
+                        ) : (
+                            <Text style={{ color: '#cbd5e1', fontSize: 10, marginTop: 30 }}>[Signature]</Text>
+                        )}
                     </View>
                 </View>
 
-                <Text style={styles.watermark}>Document généré automatiquement via LocaTrack</Text>
             </Page>
         </Document>
     );

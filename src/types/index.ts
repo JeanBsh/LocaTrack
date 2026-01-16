@@ -128,3 +128,21 @@ export interface Payment {
     status: PaymentStatus;
     createdAt: Date;
 }
+
+// User Profile for owner/landlord information
+export interface UserProfile {
+    id: string;
+    userId: string;
+    ownerInfo: {
+        name: string;
+        address: string;
+        city: string;
+        zipCode: string;
+        email?: string;
+        phone?: string;
+    };
+    signatureUrl?: string;
+    logoUrl?: string;
+    createdAt: Date;
+    updatedAt: Date;
+}

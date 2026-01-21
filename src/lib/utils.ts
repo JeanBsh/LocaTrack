@@ -19,7 +19,7 @@ export async function convertImageToBase64(url: string): Promise<string> {
             reader.readAsDataURL(blob);
         });
     } catch (error) {
-        console.error('Error converting image to base64:', error);
+        console.error('Error converting image to base64:', error, 'URL:', url);
         return '';
     }
 }

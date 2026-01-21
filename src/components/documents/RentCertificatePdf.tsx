@@ -133,7 +133,7 @@ export const RentCertificatePdf = ({ tenant, property, lease, ownerName: ownerNa
                     <View style={styles.boxRow}>
                         <Text style={styles.boxLabel}>M/Mme :</Text>
                         <Text style={styles.boxValue}>
-                            {tenant.personalInfo.firstName} {tenant.personalInfo.lastName.toUpperCase()}
+                            {tenant.personalInfo?.firstName} {tenant.personalInfo?.lastName?.toUpperCase()}
                         </Text>
                     </View>
                     {tenant.roommates?.map((rm, i) => (
@@ -145,7 +145,7 @@ export const RentCertificatePdf = ({ tenant, property, lease, ownerName: ownerNa
                     <View style={styles.boxRow}>
                         <Text style={styles.boxLabel}>Adresse :</Text>
                         <Text style={styles.boxValue}>
-                            {property.address.street}, {property.address.zipCode} {property.address.city}
+                            {property.address?.street}, {property.address?.zipCode} {property.address?.city}
                         </Text>
                     </View>
                 </View>

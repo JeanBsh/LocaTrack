@@ -117,7 +117,7 @@ export default function TenantForm() {
                     userId: user.uid,
                     type: data.leaseDetails.type,
                     dates: {
-                        start: new Date(data.leaseDetails.startDate),
+                        start: data.leaseDetails.startDate ? new Date(data.leaseDetails.startDate) : new Date(),
                         duration: data.leaseDetails.duration,
                     },
                     financials: {
@@ -161,7 +161,7 @@ export default function TenantForm() {
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Prénom</label>
                         <input
-                            {...register('personalInfo.firstName', { required: true })}
+                            {...register('personalInfo.firstName')}
                             className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                             placeholder="Jean"
                         />
@@ -169,7 +169,7 @@ export default function TenantForm() {
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Nom</label>
                         <input
-                            {...register('personalInfo.lastName', { required: true })}
+                            {...register('personalInfo.lastName')}
                             className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                             placeholder="Dupont"
                         />
@@ -178,7 +178,7 @@ export default function TenantForm() {
                         <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
                         <input
                             type="email"
-                            {...register('personalInfo.email', { required: true })}
+                            {...register('personalInfo.email')}
                             className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                             placeholder="jean.dupont@email.com"
                         />
@@ -187,7 +187,7 @@ export default function TenantForm() {
                         <label className="block text-sm font-medium text-slate-700 mb-1">Téléphone</label>
                         <input
                             type="tel"
-                            {...register('personalInfo.phone', { required: true })}
+                            {...register('personalInfo.phone')}
                             className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                             placeholder="06 12 34 56 78"
                         />
@@ -236,7 +236,7 @@ export default function TenantForm() {
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Date d'entrée (Début Bail)</label>
                                 <input
                                     type="date"
-                                    {...register('leaseDetails.startDate', { required: !!selectedPropertyId })}
+                                    {...register('leaseDetails.startDate')}
                                     className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
@@ -304,7 +304,7 @@ export default function TenantForm() {
                         <label className="block text-sm font-medium text-slate-700 mb-1">Date de Naissance</label>
                         <input
                             type="date"
-                            {...register('adminInfo.birthDate', { required: true })}
+                            {...register('adminInfo.birthDate')}
                             className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                         />
                     </div>
@@ -346,7 +346,7 @@ export default function TenantForm() {
                                 <div>
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Prénom</label>
                                     <input
-                                        {...register(`guarantors.${index}.firstName` as const, { required: true })}
+                                        {...register(`guarantors.${index}.firstName` as const)}
                                         className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                         placeholder="Prénom du garant"
                                     />
@@ -354,7 +354,7 @@ export default function TenantForm() {
                                 <div>
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Nom</label>
                                     <input
-                                        {...register(`guarantors.${index}.lastName` as const, { required: true })}
+                                        {...register(`guarantors.${index}.lastName` as const)}
                                         className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                         placeholder="Nom du garant"
                                     />
@@ -413,7 +413,7 @@ export default function TenantForm() {
                                 <div>
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Prénom</label>
                                     <input
-                                        {...register(`roommates.${index}.firstName` as const, { required: true })}
+                                        {...register(`roommates.${index}.firstName` as const)}
                                         className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                         placeholder="Prénom"
                                     />
@@ -421,7 +421,7 @@ export default function TenantForm() {
                                 <div>
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Nom</label>
                                     <input
-                                        {...register(`roommates.${index}.lastName` as const, { required: true })}
+                                        {...register(`roommates.${index}.lastName` as const)}
                                         className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                         placeholder="Nom"
                                     />

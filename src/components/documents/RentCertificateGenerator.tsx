@@ -65,14 +65,20 @@ export default function RentCertificateGenerator({ tenant, property, lease, owne
                 </div>
             </div>
 
-            <RentCertificateDownloader
-                tenant={tenant}
-                property={property}
-                lease={lease}
-                ownerName={ownerInfo?.name}
-                signatureUrl={ownerInfo?.signatureUrl}
-                logoUrl={ownerInfo?.logoUrl}
-            />
+            {ownerProfile && !ownerInfo ? (
+                <div className="flex items-center justify-center px-4">
+                    <Loader2 className="animate-spin text-purple-500" size={20} />
+                </div>
+            ) : (
+                <RentCertificateDownloader
+                    tenant={tenant}
+                    property={property}
+                    lease={lease}
+                    ownerName={ownerInfo?.name}
+                    signatureUrl={ownerInfo?.signatureUrl}
+                    logoUrl={ownerInfo?.logoUrl}
+                />
+            )}
         </div>
     );
 }

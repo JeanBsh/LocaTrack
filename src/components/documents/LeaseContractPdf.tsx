@@ -141,7 +141,7 @@ export const LeaseContractPdf = ({ tenant, property, lease, ownerInfo: ownerInfo
                 <Text style={[styles.text, styles.bold, { marginTop: 10 }]}>Le LOCATAIRE</Text>
                 <View style={styles.row}>
                     <Text style={styles.label}>Nom / Prénom :</Text>
-                    <Text style={styles.value}>{tenant.personalInfo.firstName} {tenant.personalInfo.lastName}</Text>
+                    <Text style={styles.value}>{tenant.personalInfo?.firstName} {tenant.personalInfo?.lastName}</Text>
                 </View>
                 {tenant.roommates && tenant.roommates.length > 0 && tenant.roommates.map((rm, i) => (
                     <View style={styles.row} key={i}>
@@ -151,7 +151,7 @@ export const LeaseContractPdf = ({ tenant, property, lease, ownerInfo: ownerInfo
                 ))}
                 <View style={styles.row}>
                     <Text style={styles.label}>Email :</Text>
-                    <Text style={styles.value}>{tenant.personalInfo.email}</Text>
+                    <Text style={styles.value}>{tenant.personalInfo?.email}</Text>
                 </View>
 
                 {/* II. OBJET DU CONTRAT */}
@@ -165,7 +165,7 @@ export const LeaseContractPdf = ({ tenant, property, lease, ownerInfo: ownerInfo
                 </View>
                 <View style={styles.row}>
                     <Text style={styles.label}>Adresse :</Text>
-                    <Text style={styles.value}>{property.address.street}, {property.address.zipCode} {property.address.city}</Text>
+                    <Text style={styles.value}>{property.address?.street}, {property.address?.zipCode} {property.address?.city}</Text>
                 </View>
                 <View style={styles.row}>
                     <Text style={styles.label}>Surface habitable :</Text>

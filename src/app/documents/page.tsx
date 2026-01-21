@@ -56,7 +56,11 @@ export default function DocumentsPage() {
             const qTenants = query(collection(db, 'locataires'), where('userId', '==', user.uid));
             unsubscribeTenants = onSnapshot(qTenants, (snapshot) => {
                 const tenantsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
-                tenantsData.sort((a, b) => a.personalInfo.lastName.localeCompare(b.personalInfo.lastName));
+                tenantsData.sort((a, b) => {
+                    const nameA = a.personalInfo?.lastName || '';
+                    const nameB = b.personalInfo?.lastName || '';
+                    return nameA.localeCompare(nameB);
+                });
                 setTenants(tenantsData);
             });
 

@@ -201,7 +201,6 @@ export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: own
                             <Image src={ownerInfo.logoUrl} style={{ width: 60, height: 60, marginBottom: 8, objectFit: 'contain' }} />
                         )}
                         <Text style={styles.title}>Quittance de Loyer</Text>
-                        <Text style={styles.docNumber}>N° REF-{format(period, 'yyyyMM')}-{tenant.id.slice(0, 4)}</Text>
                     </View>
                     <View style={styles.headerRight}>
                         <Text style={{ fontSize: 10, color: '#64748b' }}>Date d'émission</Text>
@@ -230,10 +229,10 @@ export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: own
                     <View style={styles.addressBox}>
                         <Text style={styles.addressBoxTitle}>Locataire(s)</Text>
                         <Text style={[styles.addressContent, { fontWeight: 'bold' }]}>
-                            {tenant.personalInfo.lastName.toUpperCase()} {tenant.personalInfo.firstName}
+                            {tenant.personalInfo?.lastName?.toUpperCase()} {tenant.personalInfo?.firstName}
                         </Text>
                         {tenant.roommates?.map((rm, i) => (
-                            <Text key={i} style={styles.addressContent}>& {rm.lastName.toUpperCase()} {rm.firstName}</Text>
+                            <Text key={i} style={styles.addressContent}>& {rm.lastName?.toUpperCase()} {rm.firstName}</Text>
                         ))}
                     </View>
                 </View>
@@ -242,7 +241,7 @@ export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: own
                 <View style={styles.propertyInfo}>
                     <Text style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Adresse de la location</Text>
                     <Text style={{ fontSize: 11, fontWeight: 'bold' }}>
-                        {property.address.street}, {property.address.zipCode} {property.address.city}
+                        {property.address?.street}, {property.address?.zipCode} {property.address?.city}
                     </Text>
                     {/* Room for apartment number if needed in future schema */}
                 </View>

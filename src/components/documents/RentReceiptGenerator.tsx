@@ -83,13 +83,19 @@ export default function RentReceiptGenerator({ tenant, property, lease, ownerPro
                 </div>
             </div>
 
-            <RentReceiptDownloader
-                tenant={tenant}
-                property={property}
-                lease={lease}
-                period={periodDate}
-                ownerInfo={ownerInfo}
-            />
+            {ownerProfile && !ownerInfo ? (
+                <div className="flex items-center justify-center px-4">
+                    <Loader2 className="animate-spin text-blue-500" size={20} />
+                </div>
+            ) : (
+                <RentReceiptDownloader
+                    tenant={tenant}
+                    property={property}
+                    lease={lease}
+                    period={periodDate}
+                    ownerInfo={ownerInfo}
+                />
+            )}
         </div>
     );
 }

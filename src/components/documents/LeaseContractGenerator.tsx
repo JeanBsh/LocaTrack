@@ -69,12 +69,18 @@ export default function LeaseContractGenerator({ tenant, property, lease, ownerP
                 </div>
             </div>
 
-            <LeaseContractDownloader
-                tenant={tenant}
-                property={property}
-                lease={lease}
-                ownerInfo={ownerInfo}
-            />
+            {ownerProfile && !ownerInfo ? (
+                <div className="flex items-center justify-center px-4">
+                    <Loader2 className="animate-spin text-emerald-500" size={20} />
+                </div>
+            ) : (
+                <LeaseContractDownloader
+                    tenant={tenant}
+                    property={property}
+                    lease={lease}
+                    ownerInfo={ownerInfo}
+                />
+            )}
         </div>
     );
 }

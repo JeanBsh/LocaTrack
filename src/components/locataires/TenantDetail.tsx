@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Tenant, Lease, Property } from '@/types';
+import { Tenant, Lease, Property, UserProfile } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { ArrowLeft, Loader2, Save, Plus, Trash2 } from 'lucide-react';
@@ -19,6 +19,7 @@ export default function TenantDetail({ tenantId }: TenantEditProps) {
     const [tenant, setTenant] = useState<Tenant | null>(null);
     const [lease, setLease] = useState<Lease | null>(null);
     const [property, setProperty] = useState<Property | null>(null);
+    const [ownerProfile, setOwnerProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -82,6 +83,13 @@ export default function TenantDetail({ tenantId }: TenantEditProps) {
                                     setProperty({ id: propSnap.id, ...propSnap.data() } as Property);
                                 }
                             }
+                        }
+
+                        // 4. Fetch Owner Profile
+                        const profileRef = doc(db, 'profiles', user.uid);
+                        const profileSnap = await getDoc(profileRef);
+                        if (profileSnap.exists()) {
+                            setOwnerProfile(profileSnap.data() as UserProfile);
                         }
                     } else {
                         console.log("No such tenant!");
@@ -269,7 +277,7 @@ export default function TenantDetail({ tenantId }: TenantEditProps) {
                 {/* Documents - Quittance */}
                 {tenant && lease && property && (
                     <div className="mt-6">
-                        <RentReceiptGenerator tenant={tenant} lease={lease} property={property} />
+                        <RentReceiptGenerator tenant={tenant} lease={lease} property={property} ownerProfile={ownerProfile} />
                     </div>
                 )}
 

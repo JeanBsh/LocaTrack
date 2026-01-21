@@ -18,8 +18,22 @@ export async function convertImageToBase64(url: string): Promise<string> {
             reader.onerror = reject;
             reader.readAsDataURL(blob);
         });
-    } catch (error) {
-        console.error('Error converting image to base64:', error, 'URL:', url);
-        return '';
+    } catch (proxyError) {
+        console.warn('Proxy failed, trying direct fetch:', proxyError);
+        try {
+            // Fallback: try direct fetch (works if CORS is configured on source)
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Direct fetch failed');
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (directError) {
+            console.error('All image fetch attempts failed:', directError, 'URL:', url);
+            return '';
+        }
     }
 }

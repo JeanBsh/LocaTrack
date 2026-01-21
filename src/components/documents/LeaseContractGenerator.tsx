@@ -7,47 +7,53 @@ import { ScrollText, Loader2, Download } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 
-const PDFDownloadLink = dynamic(
-    () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
-    { ssr: false, loading: () => <Loader2 className="animate-spin" size={16} /> }
-);
+import { convertImageToBase64 } from '@/lib/utils';
 
-const LeaseContractPdf = dynamic(
-    () => import('./LeaseContractPdf').then((mod) => mod.LeaseContractPdf),
-    { ssr: false }
-);
+// ... imports remain the same
+
+// Dynamic import of the downloader component to isolate react-pdf
+const LeaseContractDownloader = dynamic(() => import('./LeaseContractDownloader').then(mod => mod.LeaseContractDownloader), {
+    ssr: false,
+    loading: () => <Loader2 className="animate-spin" size={16} />
+});
 
 interface LeaseGeneratorProps {
     tenant: Tenant;
     property: Property;
     lease: Lease;
+    ownerProfile: UserProfile | null;
 }
 
-export default function LeaseContractGenerator({ tenant, property, lease }: LeaseGeneratorProps) {
+export default function LeaseContractGenerator({ tenant, property, lease, ownerProfile }: LeaseGeneratorProps) {
     const [ownerInfo, setOwnerInfo] = useState<{ name: string; address: string; email?: string; signatureUrl?: string; logoUrl?: string } | undefined>(undefined);
 
     useEffect(() => {
-        const fetchProfile = async () => {
-            const user = auth.currentUser;
-            if (!user) return;
+        const loadImages = async () => {
+            if (ownerProfile) {
+                let logoBase64 = ownerProfile.logoUrl;
+                let signatureBase64 = ownerProfile.signatureUrl;
 
-            const profileRef = doc(db, 'profiles', user.uid);
-            const profileSnap = await getDoc(profileRef);
+                if (ownerProfile.logoUrl?.startsWith('http')) {
+                    const base64 = await convertImageToBase64(ownerProfile.logoUrl);
+                    if (base64) logoBase64 = base64;
+                }
+                if (ownerProfile.signatureUrl?.startsWith('http')) {
+                    const base64 = await convertImageToBase64(ownerProfile.signatureUrl);
+                    if (base64) signatureBase64 = base64;
+                }
 
-            if (profileSnap.exists()) {
-                const profile = profileSnap.data() as UserProfile;
                 setOwnerInfo({
-                    name: profile.ownerInfo.name,
-                    address: `${profile.ownerInfo.address}, ${profile.ownerInfo.zipCode} ${profile.ownerInfo.city}`,
-                    email: profile.ownerInfo.email,
-                    signatureUrl: profile.signatureUrl,
-                    logoUrl: profile.logoUrl,
+                    name: ownerProfile.ownerInfo.name,
+                    address: `${ownerProfile.ownerInfo.address}, ${ownerProfile.ownerInfo.zipCode} ${ownerProfile.ownerInfo.city}`,
+                    email: ownerProfile.ownerInfo.email,
+                    signatureUrl: signatureBase64,
+                    logoUrl: logoBase64,
                 });
             }
         };
 
-        fetchProfile();
-    }, []);
+        loadImages();
+    }, [ownerProfile]);
 
     if (!tenant || !property || !lease) return null;
 
@@ -63,16 +69,12 @@ export default function LeaseContractGenerator({ tenant, property, lease }: Leas
                 </div>
             </div>
 
-            <PDFDownloadLink
-                document={<LeaseContractPdf tenant={tenant} property={property} lease={lease} ownerInfo={ownerInfo} />}
-                fileName={`Bail_${tenant.personalInfo.lastName}_${tenant.personalInfo.firstName}.pdf`}
-                className="inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow-md flex-shrink-0"
-            >
-                {({ loading }) => (loading ?
-                    <Loader2 className="animate-spin" size={16} /> :
-                    <Download size={16} />
-                )}
-            </PDFDownloadLink>
+            <LeaseContractDownloader
+                tenant={tenant}
+                property={property}
+                lease={lease}
+                ownerInfo={ownerInfo}
+            />
         </div>
     );
 }

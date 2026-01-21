@@ -7,45 +7,49 @@ import { FileCheck, Loader2, Download } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 
-const PDFDownloadLink = dynamic(
-    () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
-    { ssr: false, loading: () => <Loader2 className="animate-spin" size={16} /> }
-);
+import { convertImageToBase64 } from '@/lib/utils';
 
-const RentCertificatePdf = dynamic(
-    () => import('./RentCertificatePdf').then((mod) => mod.RentCertificatePdf),
-    { ssr: false }
-);
+// Dynamic import of the downloader component to isolate react-pdf
+const RentCertificateDownloader = dynamic(() => import('./RentCertificateDownloader').then(mod => mod.RentCertificateDownloader), {
+    ssr: false,
+    loading: () => <Loader2 className="animate-spin" size={16} />
+});
 
 interface CertificateGeneratorProps {
     tenant: Tenant;
     property: Property;
     lease: Lease;
+    ownerProfile: UserProfile | null;
 }
 
-export default function RentCertificateGenerator({ tenant, property, lease }: CertificateGeneratorProps) {
+export default function RentCertificateGenerator({ tenant, property, lease, ownerProfile }: CertificateGeneratorProps) {
     const [ownerInfo, setOwnerInfo] = useState<{ name: string; signatureUrl?: string; logoUrl?: string } | undefined>(undefined);
 
     useEffect(() => {
-        const fetchProfile = async () => {
-            const user = auth.currentUser;
-            if (!user) return;
+        const loadImages = async () => {
+            if (ownerProfile) {
+                let logoBase64 = ownerProfile.logoUrl;
+                let signatureBase64 = ownerProfile.signatureUrl;
 
-            const profileRef = doc(db, 'profiles', user.uid);
-            const profileSnap = await getDoc(profileRef);
+                if (ownerProfile.logoUrl?.startsWith('http')) {
+                    const base64 = await convertImageToBase64(ownerProfile.logoUrl);
+                    if (base64) logoBase64 = base64;
+                }
+                if (ownerProfile.signatureUrl?.startsWith('http')) {
+                    const base64 = await convertImageToBase64(ownerProfile.signatureUrl);
+                    if (base64) signatureBase64 = base64;
+                }
 
-            if (profileSnap.exists()) {
-                const profile = profileSnap.data() as UserProfile;
                 setOwnerInfo({
-                    name: profile.ownerInfo.name,
-                    signatureUrl: profile.signatureUrl,
-                    logoUrl: profile.logoUrl,
+                    name: ownerProfile.ownerInfo.name,
+                    signatureUrl: signatureBase64,
+                    logoUrl: logoBase64,
                 });
             }
         };
 
-        fetchProfile();
-    }, []);
+        loadImages();
+    }, [ownerProfile]);
 
     if (!tenant || !property || !lease) return null;
 
@@ -61,16 +65,14 @@ export default function RentCertificateGenerator({ tenant, property, lease }: Ce
                 </div>
             </div>
 
-            <PDFDownloadLink
-                document={<RentCertificatePdf tenant={tenant} property={property} lease={lease} ownerName={ownerInfo?.name} signatureUrl={ownerInfo?.signatureUrl} logoUrl={ownerInfo?.logoUrl} />}
-                fileName={`Attestation_${tenant.personalInfo.lastName}_${tenant.personalInfo.firstName}.pdf`}
-                className="inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow-md flex-shrink-0"
-            >
-                {({ loading }) => (loading ?
-                    <Loader2 className="animate-spin" size={16} /> :
-                    <Download size={16} />
-                )}
-            </PDFDownloadLink>
+            <RentCertificateDownloader
+                tenant={tenant}
+                property={property}
+                lease={lease}
+                ownerName={ownerInfo?.name}
+                signatureUrl={ownerInfo?.signatureUrl}
+                logoUrl={ownerInfo?.logoUrl}
+            />
         </div>
     );
 }

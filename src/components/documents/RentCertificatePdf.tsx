@@ -4,39 +4,40 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tenant, Property, Lease } from '@/types';
 
+// Create styles
 const styles = StyleSheet.create({
     page: {
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
-        padding: 40,
+        padding: 30, // Reduced from 40
         fontFamily: 'Helvetica',
         fontSize: 10,
         color: '#1e293b',
     },
     header: {
-        marginBottom: 40,
+        marginBottom: 25, // Reduced from 40
         borderBottomWidth: 2,
         borderBottomColor: '#2563eb',
-        paddingBottom: 15,
+        paddingBottom: 10,
         alignItems: 'center',
     },
     title: {
-        fontSize: 24,
+        fontSize: 20, // Reduced from 24
         fontWeight: 'bold',
         textTransform: 'uppercase',
         color: '#2563eb',
         letterSpacing: 1,
     },
     subtitle: {
-        fontSize: 10,
+        fontSize: 9, // Reduced from 10
         color: '#64748b',
         marginTop: 5,
     },
     content: {
-        fontSize: 12,
-        lineHeight: 1.8,
+        fontSize: 11, // Reduced from 12
+        lineHeight: 1.6, // Reduced from 1.8
         textAlign: 'justify',
-        marginBottom: 30,
+        marginBottom: 20, // Reduced from 30
     },
     bold: {
         fontWeight: 'bold',
@@ -46,13 +47,13 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#cbd5e1',
         backgroundColor: '#f8fafc',
-        padding: 20,
+        padding: 15, // Reduced from 20
         borderRadius: 4,
-        marginBottom: 30,
+        marginBottom: 20, // Reduced from 30
     },
     boxRow: {
         flexDirection: 'row',
-        marginBottom: 8,
+        marginBottom: 6, // Reduced from 8
     },
     boxLabel: {
         width: '30%',
@@ -67,12 +68,12 @@ const styles = StyleSheet.create({
         marginTop: 'auto',
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingTop: 20,
+        paddingTop: 15, // Reduced from 20
         borderTopWidth: 1,
         borderTopColor: '#e2e8f0',
     },
     signatureSection: {
-        marginTop: 40,
+        marginTop: 20, // Reduced from 40
         alignItems: 'flex-end',
         paddingRight: 20,
     },

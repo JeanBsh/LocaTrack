@@ -8,8 +8,10 @@ import { format } from 'date-fns';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 
-// Dynamic import of the entire PDF download component
-const PdfDownloader = dynamic(() => import('./PdfDownloader').then(mod => mod.RentReceiptDownloader), {
+import { convertImageToBase64 } from '@/lib/utils';
+
+// Dynamic import of the downloader component to isolate react-pdf
+const RentReceiptDownloader = dynamic(() => import('./RentReceiptDownloader').then(mod => mod.RentReceiptDownloader), {
     ssr: false,
     loading: () => <Loader2 className="animate-spin" size={16} />
 });
@@ -18,33 +20,39 @@ interface ReceiptGeneratorProps {
     tenant: Tenant;
     property: Property;
     lease: Lease;
+    ownerProfile: UserProfile | null;
 }
 
-export default function RentReceiptGenerator({ tenant, property, lease }: ReceiptGeneratorProps) {
+export default function RentReceiptGenerator({ tenant, property, lease, ownerProfile }: ReceiptGeneratorProps) {
     const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
     const [ownerInfo, setOwnerInfo] = useState<{ name: string; address: string; signatureUrl?: string; logoUrl?: string } | undefined>(undefined);
 
     useEffect(() => {
-        const fetchProfile = async () => {
-            const user = auth.currentUser;
-            if (!user) return;
+        const loadImages = async () => {
+            if (ownerProfile) {
+                let logoBase64 = ownerProfile.logoUrl;
+                let signatureBase64 = ownerProfile.signatureUrl;
 
-            const profileRef = doc(db, 'profiles', user.uid);
-            const profileSnap = await getDoc(profileRef);
+                if (ownerProfile.logoUrl?.startsWith('http')) {
+                    const base64 = await convertImageToBase64(ownerProfile.logoUrl);
+                    if (base64) logoBase64 = base64;
+                }
+                if (ownerProfile.signatureUrl?.startsWith('http')) {
+                    const base64 = await convertImageToBase64(ownerProfile.signatureUrl);
+                    if (base64) signatureBase64 = base64;
+                }
 
-            if (profileSnap.exists()) {
-                const profile = profileSnap.data() as UserProfile;
                 setOwnerInfo({
-                    name: profile.ownerInfo.name,
-                    address: `${profile.ownerInfo.address}\n${profile.ownerInfo.zipCode} ${profile.ownerInfo.city}`,
-                    signatureUrl: profile.signatureUrl,
-                    logoUrl: profile.logoUrl,
+                    name: ownerProfile.ownerInfo.name,
+                    address: `${ownerProfile.ownerInfo.address}\n${ownerProfile.ownerInfo.zipCode} ${ownerProfile.ownerInfo.city}`,
+                    signatureUrl: signatureBase64,
+                    logoUrl: logoBase64,
                 });
             }
         };
 
-        fetchProfile();
-    }, []);
+        loadImages();
+    }, [ownerProfile]);
 
     const getPeriodDate = () => {
         const [year, month] = selectedMonth.split('-');
@@ -75,7 +83,7 @@ export default function RentReceiptGenerator({ tenant, property, lease }: Receip
                 </div>
             </div>
 
-            <PdfDownloader
+            <RentReceiptDownloader
                 tenant={tenant}
                 property={property}
                 lease={lease}

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Tenant, Lease, Property } from '@/types';
+import { Tenant, Lease, Property, UserProfile } from '@/types';
 import RentReceiptGenerator from '@/components/documents/RentReceiptGenerator';
 import RentCertificateGenerator from '@/components/documents/RentCertificateGenerator';
 import LeaseContractGenerator from '@/components/documents/LeaseContractGenerator';
@@ -15,6 +15,7 @@ export default function DocumentsPage() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
     const [leases, setLeases] = useState<Lease[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -22,6 +23,7 @@ export default function DocumentsPage() {
         let unsubscribeTenants: (() => void) | undefined;
         let unsubscribeLeases: (() => void) | undefined;
         let unsubscribeProperties: (() => void) | undefined;
+        let unsubscribeProfile: (() => void) | undefined;
 
         const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
             if (!user) {
@@ -32,7 +34,6 @@ export default function DocumentsPage() {
                 return;
             }
 
-            // Suppression du orderBy pour éviter les erreurs d'index sur champs imbriqués
             // Suppression du orderBy pour éviter les erreurs d'index sur champs imbriqués
             const qTenants = query(collection(db, 'locataires'), where('userId', '==', user.uid));
             unsubscribeTenants = onSnapshot(qTenants, (snapshot) => {
@@ -51,6 +52,14 @@ export default function DocumentsPage() {
             unsubscribeProperties = onSnapshot(qProperties, (snapshot) => {
                 setProperties(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property)));
             });
+
+            // Fetch user profile
+            const profileRef = doc(db, 'profiles', user.uid);
+            unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    setUserProfile(docSnap.data() as UserProfile);
+                }
+            });
         });
 
         return () => {
@@ -58,6 +67,7 @@ export default function DocumentsPage() {
             if (unsubscribeTenants) unsubscribeTenants();
             if (unsubscribeLeases) unsubscribeLeases();
             if (unsubscribeProperties) unsubscribeProperties();
+            if (unsubscribeProfile) unsubscribeProfile();
         };
     }, []);
 
@@ -175,17 +185,20 @@ export default function DocumentsPage() {
                                             tenant={tenant}
                                             property={property}
                                             lease={activeLease}
+                                            ownerProfile={userProfile}
                                         />
                                         <div className="grid grid-cols-2 gap-3">
                                             <RentCertificateGenerator
                                                 tenant={tenant}
                                                 property={property}
                                                 lease={activeLease}
+                                                ownerProfile={userProfile}
                                             />
                                             <LeaseContractGenerator
                                                 tenant={tenant}
                                                 property={property}
                                                 lease={activeLease}
+                                                ownerProfile={userProfile}
                                             />
                                         </div>
                                     </div>

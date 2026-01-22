@@ -3,11 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Tenant, Property, Lease, UserProfile } from '@/types';
-import { FileCheck, Loader2, Download } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
-
-import { convertImageToBase64 } from '@/lib/utils';
+import { FileCheck, Loader2 } from 'lucide-react';
 
 // Dynamic import of the downloader component to isolate react-pdf
 const RentCertificateDownloader = dynamic(() => import('./RentCertificateDownloader').then(mod => mod.RentCertificateDownloader), {
@@ -26,29 +22,14 @@ export default function RentCertificateGenerator({ tenant, property, lease, owne
     const [ownerInfo, setOwnerInfo] = useState<{ name: string; signatureUrl?: string; logoUrl?: string } | undefined>(undefined);
 
     useEffect(() => {
-        const loadImages = async () => {
-            if (ownerProfile) {
-                let logoBase64 = ownerProfile.logoUrl;
-                let signatureBase64 = ownerProfile.signatureUrl;
-
-                if (ownerProfile.logoUrl?.startsWith('http')) {
-                    const base64 = await convertImageToBase64(ownerProfile.logoUrl);
-                    if (base64) logoBase64 = base64;
-                }
-                if (ownerProfile.signatureUrl?.startsWith('http')) {
-                    const base64 = await convertImageToBase64(ownerProfile.signatureUrl);
-                    if (base64) signatureBase64 = base64;
-                }
-
-                setOwnerInfo({
-                    name: ownerProfile.ownerInfo.name,
-                    signatureUrl: signatureBase64,
-                    logoUrl: logoBase64,
-                });
-            }
-        };
-
-        loadImages();
+        if (ownerProfile) {
+            // Use base64 directly from profile (stored during upload)
+            setOwnerInfo({
+                name: ownerProfile.ownerInfo.name,
+                signatureUrl: ownerProfile.signatureBase64 || ownerProfile.signatureUrl,
+                logoUrl: ownerProfile.logoBase64 || ownerProfile.logoUrl,
+            });
+        }
     }, [ownerProfile]);
 
     if (!tenant || !property || !lease) return null;

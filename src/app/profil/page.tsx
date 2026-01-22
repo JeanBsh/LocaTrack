@@ -68,6 +68,16 @@ export default function ProfilPage() {
         return () => unsubscribe();
     }, [reset]);
 
+    // Convert file to base64
+    const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
     const uploadImage = async (file: File, type: 'signature' | 'logo') => {
         if (!userId) return null;
 
@@ -75,13 +85,19 @@ export default function ProfilPage() {
         isSignature ? setUploadingSignature(true) : setUploadingLogo(true);
 
         try {
+            // Convert to base64 for reliable PDF generation
+            const base64 = await fileToBase64(file);
+
+            // Also upload to Firebase Storage for display/backup
             const storageRef = ref(storage, `profiles/${userId}/${type}_${Date.now()}`);
             await uploadBytes(storageRef, file);
             const url = await getDownloadURL(storageRef);
 
-            // Update Firestore with the new URL
+            // Update Firestore with both URL and base64
             const profileRef = doc(db, 'profiles', userId);
-            const updateData = isSignature ? { signatureUrl: url } : { logoUrl: url };
+            const updateData = isSignature
+                ? { signatureUrl: url, signatureBase64: base64 }
+                : { logoUrl: url, logoBase64: base64 };
 
             if (profileExists) {
                 await updateDoc(profileRef, { ...updateData, updatedAt: new Date() });
@@ -114,9 +130,11 @@ export default function ProfilPage() {
                 }
             }
 
-            // Update Firestore
+            // Update Firestore - remove both URL and base64
             const profileRef = doc(db, 'profiles', userId);
-            const updateData = isSignature ? { signatureUrl: null } : { logoUrl: null };
+            const updateData = isSignature
+                ? { signatureUrl: null, signatureBase64: null }
+                : { logoUrl: null, logoBase64: null };
 
             if (profileExists) {
                 await updateDoc(profileRef, { ...updateData, updatedAt: new Date() });

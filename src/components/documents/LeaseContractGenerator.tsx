@@ -3,13 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Tenant, Property, Lease, UserProfile } from '@/types';
-import { ScrollText, Loader2, Download } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
-
-import { convertImageToBase64 } from '@/lib/utils';
-
-// ... imports remain the same
+import { ScrollText, Loader2 } from 'lucide-react';
 
 // Dynamic import of the downloader component to isolate react-pdf
 const LeaseContractDownloader = dynamic(() => import('./LeaseContractDownloader').then(mod => mod.LeaseContractDownloader), {
@@ -28,31 +22,16 @@ export default function LeaseContractGenerator({ tenant, property, lease, ownerP
     const [ownerInfo, setOwnerInfo] = useState<{ name: string; address: string; email?: string; signatureUrl?: string; logoUrl?: string } | undefined>(undefined);
 
     useEffect(() => {
-        const loadImages = async () => {
-            if (ownerProfile) {
-                let logoBase64 = ownerProfile.logoUrl;
-                let signatureBase64 = ownerProfile.signatureUrl;
-
-                if (ownerProfile.logoUrl?.startsWith('http')) {
-                    const base64 = await convertImageToBase64(ownerProfile.logoUrl);
-                    if (base64) logoBase64 = base64;
-                }
-                if (ownerProfile.signatureUrl?.startsWith('http')) {
-                    const base64 = await convertImageToBase64(ownerProfile.signatureUrl);
-                    if (base64) signatureBase64 = base64;
-                }
-
-                setOwnerInfo({
-                    name: ownerProfile.ownerInfo.name,
-                    address: `${ownerProfile.ownerInfo.address}, ${ownerProfile.ownerInfo.zipCode} ${ownerProfile.ownerInfo.city}`,
-                    email: ownerProfile.ownerInfo.email,
-                    signatureUrl: signatureBase64,
-                    logoUrl: logoBase64,
-                });
-            }
-        };
-
-        loadImages();
+        if (ownerProfile) {
+            // Use base64 directly from profile (stored during upload)
+            setOwnerInfo({
+                name: ownerProfile.ownerInfo.name,
+                address: `${ownerProfile.ownerInfo.address}, ${ownerProfile.ownerInfo.zipCode} ${ownerProfile.ownerInfo.city}`,
+                email: ownerProfile.ownerInfo.email,
+                signatureUrl: ownerProfile.signatureBase64 || ownerProfile.signatureUrl,
+                logoUrl: ownerProfile.logoBase64 || ownerProfile.logoUrl,
+            });
+        }
     }, [ownerProfile]);
 
     if (!tenant || !property || !lease) return null;

@@ -3,12 +3,8 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Tenant, Property, Lease, UserProfile } from '@/types';
-import { Receipt, Loader2, Calendar, Download } from 'lucide-react';
+import { Receipt, Loader2, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
-import { doc, getDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
-
-import { convertImageToBase64 } from '@/lib/utils';
 
 // Dynamic import of the downloader component to isolate react-pdf
 const RentReceiptDownloader = dynamic(() => import('./RentReceiptDownloader').then(mod => mod.RentReceiptDownloader), {
@@ -28,30 +24,16 @@ export default function RentReceiptGenerator({ tenant, property, lease, ownerPro
     const [ownerInfo, setOwnerInfo] = useState<{ name: string; address: string; signatureUrl?: string; logoUrl?: string } | undefined>(undefined);
 
     useEffect(() => {
-        const loadImages = async () => {
-            if (ownerProfile) {
-                let logoBase64 = ownerProfile.logoUrl;
-                let signatureBase64 = ownerProfile.signatureUrl;
-
-                if (ownerProfile.logoUrl?.startsWith('http')) {
-                    const base64 = await convertImageToBase64(ownerProfile.logoUrl);
-                    if (base64) logoBase64 = base64;
-                }
-                if (ownerProfile.signatureUrl?.startsWith('http')) {
-                    const base64 = await convertImageToBase64(ownerProfile.signatureUrl);
-                    if (base64) signatureBase64 = base64;
-                }
-
-                setOwnerInfo({
-                    name: ownerProfile.ownerInfo.name,
-                    address: `${ownerProfile.ownerInfo.address}\n${ownerProfile.ownerInfo.zipCode} ${ownerProfile.ownerInfo.city}`,
-                    signatureUrl: signatureBase64,
-                    logoUrl: logoBase64,
-                });
-            }
-        };
-
-        loadImages();
+        if (ownerProfile) {
+            // Use base64 directly from profile (stored during upload)
+            // This works reliably in both local and production environments
+            setOwnerInfo({
+                name: ownerProfile.ownerInfo.name,
+                address: `${ownerProfile.ownerInfo.address}\n${ownerProfile.ownerInfo.zipCode} ${ownerProfile.ownerInfo.city}`,
+                signatureUrl: ownerProfile.signatureBase64 || ownerProfile.signatureUrl,
+                logoUrl: ownerProfile.logoBase64 || ownerProfile.logoUrl,
+            });
+        }
     }, [ownerProfile]);
 
     const getPeriodDate = () => {

@@ -143,6 +143,9 @@ export interface UserProfile {
     };
     signatureUrl?: string;
     logoUrl?: string;
+    // Base64 encoded images for PDF generation (works reliably in production)
+    signatureBase64?: string;
+    logoBase64?: string;
     createdAt: Date;
     updatedAt: Date;
 }

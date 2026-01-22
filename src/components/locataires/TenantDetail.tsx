@@ -187,6 +187,15 @@ export default function TenantDetail({ tenantId }: TenantEditProps) {
                             <input disabled={!isEditing} {...register('personalInfo.phone')} className="w-full p-2 border border-slate-200 rounded-lg disabled:bg-slate-50" />
                         </div>
                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Mode de paiement</label>
+                            <select disabled={!isEditing} {...register('paymentMethod')} className="w-full p-2 border border-slate-200 rounded-lg bg-white disabled:bg-slate-50">
+                                <option value="">Non défini</option>
+                                <option value="VIREMENT">Virement</option>
+                                <option value="CHEQUE">Chèque</option>
+                                <option value="ESPECES">Espèces</option>
+                            </select>
+                        </div>
+                        <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
                             <select disabled={!isEditing} {...register('status')} className="w-full p-2 border border-slate-200 rounded-lg bg-white disabled:bg-slate-50">
                                 <option value="ACTIF">Actif</option>

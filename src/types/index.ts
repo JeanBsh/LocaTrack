@@ -29,6 +29,7 @@ export interface PropertyDocument {
 export interface Property {
     id: string;
     userId?: string;
+    denomination?: string; // Nom personnalisé pour différencier les biens
     type: PropertyType;
     address: Address;
     features: PropertyFeatures;
@@ -59,6 +60,7 @@ export interface Guarantor {
 }
 
 export type TenantStatus = 'ACTIF' | 'ARCHIVE';
+export type TenantPaymentMethod = 'VIREMENT' | 'CHEQUE' | 'ESPECES';
 
 export interface Roommate {
     firstName: string;
@@ -74,6 +76,7 @@ export interface Tenant {
     adminInfo: TenantAdminInfo;
     guarantors: Guarantor[];
     roommates?: Roommate[];
+    paymentMethod?: TenantPaymentMethod;
     status: TenantStatus;
     createdAt: Date;
     updatedAt: Date;

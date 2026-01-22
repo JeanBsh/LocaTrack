@@ -21,16 +21,18 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-end',
+        alignItems: 'center',
     },
     headerLeft: {
-        flexDirection: 'column',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
     },
     headerRight: {
         textAlign: 'right',
     },
     title: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: 'bold',
         textTransform: 'uppercase',
         color: '#2563eb',
@@ -133,17 +135,22 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
     },
     footerContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexDirection: 'column',
         marginTop: 'auto',
+        paddingTop: 20,
     },
     signatureBox: {
         marginTop: 10,
+        width: '100%',
     },
     signatureTitle: {
-        marginBottom: 20,
+        marginBottom: 15,
         fontWeight: 'bold',
         fontSize: 10,
+    },
+    signatureImage: {
+        alignItems: 'center',
+        width: '100%',
     },
     watermark: {
         position: 'absolute',
@@ -185,6 +192,17 @@ export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: own
     const charges = lease.financials.currentCharges;
     const total = rent + charges;
 
+    // Format payment method
+    const getPaymentMethodLabel = (method?: string) => {
+        switch (method) {
+            case 'VIREMENT': return 'virement bancaire';
+            case 'CHEQUE': return 'chèque';
+            case 'ESPECES': return 'espèces';
+            default: return null;
+        }
+    };
+    const paymentMethodLabel = getPaymentMethodLabel(tenant.paymentMethod);
+
     // Use owner info from profile or fallback to placeholder
     const ownerInfo = ownerInfoProp || {
         name: "Monsieur le Propriétaire",
@@ -198,13 +216,13 @@ export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: own
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
                         {ownerInfo.logoUrl && (
-                            <Image src={ownerInfo.logoUrl} style={{ width: 60, height: 60, marginBottom: 8, objectFit: 'contain' }} />
+                            <Image src={ownerInfo.logoUrl} style={{ width: 70, height: 70, objectFit: 'contain' }} />
                         )}
                         <Text style={styles.title}>Quittance de Loyer</Text>
                     </View>
                     <View style={styles.headerRight}>
-                        <Text style={{ fontSize: 10, color: '#64748b' }}>Date d'émission</Text>
-                        <Text style={{ fontWeight: 'bold' }}>{dateOfIssue}</Text>
+                        <Text style={{ fontSize: 9, color: '#64748b' }}>Date d'émission</Text>
+                        <Text style={{ fontWeight: 'bold', fontSize: 11 }}>{dateOfIssue}</Text>
                     </View>
                 </View>
 
@@ -275,7 +293,8 @@ export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: own
                 {/* Legal Block */}
                 <Text style={styles.legalText}>
                     Je soussigné(e), propriétaire du logement désigné ci-dessus, déclare avoir reçu de la part du locataire
-                    la somme de {total.toFixed(2)} euros au titre du loyer et des charges pour la période mentionnée.
+                    la somme de {total.toFixed(2)} euros au titre du loyer et des charges pour la période mentionnée
+                    {paymentMethodLabel ? `, payée par ${paymentMethodLabel}` : ''}.
                     {"\n"}
                     Cette quittance annule tous les reçus qui auraient pu être donnés pour acompte versé sur la présente échéance.
                     En cas de congé, le paiement du dernier mois de loyer ne peut être compensé par le dépôt de garantie.
@@ -285,9 +304,11 @@ export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: own
                 <View style={styles.footerContainer}>
                     <View style={styles.signatureBox}>
                         <Text>Fait à {property.address.city}, le {dateOfIssue}</Text>
-                        <Text style={[styles.signatureTitle, { marginTop: 10 }]}>Le Bailleur</Text>
+                        <Text style={[styles.signatureTitle, { marginTop: 8 }]}>Le Bailleur</Text>
+                    </View>
+                    <View style={styles.signatureImage}>
                         {ownerInfo.signatureUrl ? (
-                            <Image src={ownerInfo.signatureUrl} style={{ width: 120, height: 60, objectFit: 'contain' }} />
+                            <Image src={ownerInfo.signatureUrl} style={{ width: 180, height: 90, objectFit: 'contain' }} />
                         ) : (
                             <Text style={{ color: '#cbd5e1', fontSize: 10, marginTop: 30 }}>[Signature]</Text>
                         )}

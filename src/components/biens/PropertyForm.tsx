@@ -10,6 +10,7 @@ import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import Link from 'next/link';
 
 interface PropertyFormData {
+    denomination?: string;
     type: PropertyType;
     address: {
         street: string;
@@ -47,6 +48,7 @@ export default function PropertyForm() {
 
             const propertyData = {
                 ...data,
+                denomination: data.denomination || '',
                 features: data.features,
                 userId: user.uid,
                 financials: {
@@ -93,30 +95,42 @@ export default function PropertyForm() {
                 <div className="mb-8 pb-6 border-b border-slate-200">
                     <h2 className="text-xl font-semibold text-slate-900 mb-6">Identification du Bien</h2>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-6">
                         <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-slate-700">Type de Bien</label>
-                            <select
-                                {...register('type', { required: true })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                            >
-                                <option value="Appartement">Appartement</option>
-                                <option value="Maison">Maison</option>
-                                <option value="Bureau">Bureau</option>
-                                <option value="Local Commercial">Local Commercial</option>
-                            </select>
+                            <label className="text-sm font-medium text-slate-700">Dénomination</label>
+                            <input
+                                {...register('denomination')}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                placeholder="Ex: Appartement Paris 11, Studio Bastille, Maison Vincennes..."
+                            />
+                            <p className="text-xs text-slate-500">Nom personnalisé pour identifier facilement ce bien</p>
                         </div>
 
-                        <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-slate-700">Statut</label>
-                            <select
-                                {...register('status', { required: true })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                            >
-                                <option value="DISPONIBLE">Disponible</option>
-                                <option value="OCCUPE">Occupé</option>
-                                <option value="TRAVAUX">En Travaux</option>
-                            </select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium text-slate-700">Type de Bien</label>
+                                <select
+                                    {...register('type', { required: true })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                >
+                                    <option value="Appartement">Appartement</option>
+                                    <option value="Maison">Maison</option>
+                                    <option value="Bureau">Bureau</option>
+                                    <option value="Local Commercial">Local Commercial</option>
+                                </select>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium text-slate-700">Statut</label>
+                                <select
+                                    {...register('status', { required: true })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                >
+                                    <option value="DISPONIBLE">Disponible</option>
+                                    <option value="OCCUPE">Occupé</option>
+                                    <option value="TRAVAUX">En Travaux</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>

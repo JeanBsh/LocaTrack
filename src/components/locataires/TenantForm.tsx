@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { addDoc, collection, serverTimestamp, getDocs, doc, updateDoc, writeBatch, query, where } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { Tenant, Property } from '@/types';
+import { Tenant, Property, TenantPaymentMethod } from '@/types';
 import { Plus, Trash2, Save, Loader2, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -102,6 +102,7 @@ export default function TenantForm() {
                 adminInfo: data.adminInfo,
                 guarantors: data.guarantors,
                 roommates: data.roommates || [],
+                paymentMethod: data.paymentMethod || null,
                 status: data.status,
                 userId: user.uid,
                 createdAt: serverTimestamp(),
@@ -192,6 +193,18 @@ export default function TenantForm() {
                             placeholder="06 12 34 56 78"
                         />
                     </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Mode de paiement</label>
+                        <select
+                            {...register('paymentMethod')}
+                            className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                        >
+                            <option value="">Sélectionner...</option>
+                            <option value="VIREMENT">Virement</option>
+                            <option value="CHEQUE">Chèque</option>
+                            <option value="ESPECES">Espèces</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -212,7 +225,10 @@ export default function TenantForm() {
                             <option value="">Sélectionner un bien...</option>
                             {properties.map(property => (
                                 <option key={property.id} value={property.id}>
-                                    {property.type} - {property.address.street}, {property.address.city} ({property.status})
+                                    {property.denomination
+                                        ? `${property.denomination} - ${property.address.city} (${property.status})`
+                                        : `${property.type} - ${property.address.street}, ${property.address.city} (${property.status})`
+                                    }
                                 </option>
                             ))}
                         </select>

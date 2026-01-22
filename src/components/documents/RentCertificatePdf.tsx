@@ -73,9 +73,9 @@ const styles = StyleSheet.create({
         borderTopColor: '#e2e8f0',
     },
     signatureSection: {
-        marginTop: 20, // Reduced from 40
-        alignItems: 'flex-end',
-        paddingRight: 20,
+        marginTop: 30,
+        alignItems: 'center',
+        width: '100%',
     },
 });
 
@@ -116,7 +116,7 @@ export const RentCertificatePdf = ({ tenant, property, lease, ownerName: ownerNa
             <Page size="A4" style={styles.page}>
                 <View style={styles.header}>
                     {logoUrl && (
-                        <Image src={logoUrl} style={{ width: 60, height: 60, marginBottom: 10, objectFit: 'contain' }} />
+                        <Image src={logoUrl} style={{ width: 90, height: 90, marginBottom: 10, objectFit: 'contain' }} />
                     )}
                     <Text style={styles.title}>Attestation de Loyer</Text>
                     <Text style={styles.subtitle}>Document valant justificatif de domicile</Text>
@@ -167,10 +167,10 @@ export const RentCertificatePdf = ({ tenant, property, lease, ownerName: ownerNa
                 </View>
 
                 <View style={styles.signatureSection}>
-                    <Text style={{ marginBottom: 10 }}>Fait à {property.address.city}, le {dateOfIssue}</Text>
-                    <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>Le Bailleur</Text>
+                    <Text style={{ marginBottom: 15, textAlign: 'center' }}>Fait à {property.address.city}, le {dateOfIssue}</Text>
+                    <Text style={{ fontWeight: 'bold', marginBottom: 15, textAlign: 'center' }}>Le Bailleur</Text>
                     {signatureUrl ? (
-                        <Image src={signatureUrl} style={{ width: 120, height: 60, objectFit: 'contain' }} />
+                        <Image src={signatureUrl} style={{ width: 180, height: 90, objectFit: 'contain' }} />
                     ) : (
                         <Text style={{ color: '#cbd5e1', fontSize: 10, marginTop: 40 }}>[Signature]</Text>
                     )}

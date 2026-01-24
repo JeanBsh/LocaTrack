@@ -55,6 +55,10 @@ export default function PropertyList() {
                             </span>
                         </div>
 
+                        {property.denomination && (
+                            <div className={styles.denomination}>{property.denomination}</div>
+                        )}
+
                         <div className={styles.address}>
                             {property.address.street}<br />
                             {property.address.zipCode} {property.address.city}

@@ -68,6 +68,59 @@ export default function ProfilPage() {
         return () => unsubscribe();
     }, [reset]);
 
+    // Compress and resize image for Firestore storage (max 1MB limit)
+    const compressImage = (file: File, maxWidth: number, maxHeight: number, quality: number = 0.8): Promise<{ base64: string; blob: Blob }> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.createElement('img');
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let { width, height } = img;
+
+                    // Calculate new dimensions while maintaining aspect ratio
+                    if (width > maxWidth || height > maxHeight) {
+                        const ratio = Math.min(maxWidth / width, maxHeight / height);
+                        width = Math.round(width * ratio);
+                        height = Math.round(height * ratio);
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        reject(new Error('Could not get canvas context'));
+                        return;
+                    }
+
+                    // Draw image with white background (for transparency)
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Convert to base64 and blob
+                    const base64 = canvas.toDataURL('image/jpeg', quality);
+                    canvas.toBlob(
+                        (blob) => {
+                            if (blob) {
+                                resolve({ base64, blob });
+                            } else {
+                                reject(new Error('Could not create blob'));
+                            }
+                        },
+                        'image/jpeg',
+                        quality
+                    );
+                };
+                img.onerror = () => reject(new Error('Could not load image'));
+                img.src = e.target?.result as string;
+            };
+            reader.onerror = () => reject(new Error('Could not read file'));
+            reader.readAsDataURL(file);
+        });
+    };
+
     const uploadImage = async (file: File, type: 'signature' | 'logo') => {
         if (!userId) return null;
 
@@ -75,13 +128,20 @@ export default function ProfilPage() {
         isSignature ? setUploadingSignature(true) : setUploadingLogo(true);
 
         try {
+            // Compress image: signature 800px max, logo 400px max
+            const maxSize = isSignature ? 800 : 400;
+            const { base64, blob } = await compressImage(file, maxSize, maxSize, 0.85);
+
+            // Upload compressed image to Firebase Storage
             const storageRef = ref(storage, `profiles/${userId}/${type}_${Date.now()}`);
-            await uploadBytes(storageRef, file);
+            await uploadBytes(storageRef, blob);
             const url = await getDownloadURL(storageRef);
 
-            // Update Firestore with the new URL
+            // Update Firestore with both URL and base64
             const profileRef = doc(db, 'profiles', userId);
-            const updateData = isSignature ? { signatureUrl: url } : { logoUrl: url };
+            const updateData = isSignature
+                ? { signatureUrl: url, signatureBase64: base64 }
+                : { logoUrl: url, logoBase64: base64 };
 
             if (profileExists) {
                 await updateDoc(profileRef, { ...updateData, updatedAt: new Date() });
@@ -114,9 +174,11 @@ export default function ProfilPage() {
                 }
             }
 
-            // Update Firestore
+            // Update Firestore - remove both URL and base64
             const profileRef = doc(db, 'profiles', userId);
-            const updateData = isSignature ? { signatureUrl: null } : { logoUrl: null };
+            const updateData = isSignature
+                ? { signatureUrl: null, signatureBase64: null }
+                : { logoUrl: null, logoBase64: null };
 
             if (profileExists) {
                 await updateDoc(profileRef, { ...updateData, updatedAt: new Date() });
@@ -136,9 +198,9 @@ export default function ProfilPage() {
                 alert('Veuillez sélectionner une image');
                 return;
             }
-            // Validate file size (max 2MB)
-            if (file.size > 2 * 1024 * 1024) {
-                alert('L\'image ne doit pas dépasser 2 Mo');
+            // Validate file size (max 10MB - will be compressed automatically)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('L\'image ne doit pas dépasser 10 Mo');
                 return;
             }
             uploadImage(file, type);
@@ -379,7 +441,7 @@ export default function ProfilPage() {
                                             <>
                                                 <PenTool className="h-8 w-8 mx-auto text-slate-400 mb-2" />
                                                 <p className="text-sm text-slate-600 font-medium">Cliquez pour ajouter</p>
-                                                <p className="text-xs text-slate-400 mt-1">PNG, JPG (max 2 Mo)</p>
+                                                <p className="text-xs text-slate-400 mt-1">PNG, JPG (max 10 Mo)</p>
                                             </>
                                         )}
                                     </button>
@@ -426,7 +488,7 @@ export default function ProfilPage() {
                                             <>
                                                 <Image className="h-8 w-8 mx-auto text-slate-400 mb-2" />
                                                 <p className="text-sm text-slate-600 font-medium">Cliquez pour ajouter</p>
-                                                <p className="text-xs text-slate-400 mt-1">PNG, JPG (max 2 Mo)</p>
+                                                <p className="text-xs text-slate-400 mt-1">PNG, JPG (max 10 Mo)</p>
                                             </>
                                         )}
                                     </button>

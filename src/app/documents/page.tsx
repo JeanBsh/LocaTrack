@@ -14,7 +14,6 @@ import { format } from 'date-fns';
 import { pdf } from '@react-pdf/renderer';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { convertImageToBase64 } from '@/lib/utils';
 import { RentReceiptPdf } from '@/components/documents/RentReceiptPdf';
 import { RentCertificatePdf } from '@/components/documents/RentCertificatePdf';
 import { LeaseContractPdf } from '@/components/documents/LeaseContractPdf';
@@ -136,27 +135,16 @@ export default function DocumentsPage() {
             const [year, month] = bulkMonth.split('-');
             const periodDate = new Date(parseInt(year), parseInt(month) - 1, 1);
 
-            // Prepare user profile images once
+            // Use base64 directly from profile (stored during upload)
+            // This works reliably in both local and production environments
             let ownerInfo: any = undefined;
             if (userProfile) {
-                let logoBase64 = userProfile.logoUrl;
-                let signatureBase64 = userProfile.signatureUrl;
-
-                if (userProfile.logoUrl?.startsWith('http')) {
-                    const base64 = await convertImageToBase64(userProfile.logoUrl);
-                    if (base64) logoBase64 = base64;
-                }
-                if (userProfile.signatureUrl?.startsWith('http')) {
-                    const base64 = await convertImageToBase64(userProfile.signatureUrl);
-                    if (base64) signatureBase64 = base64;
-                }
-
                 ownerInfo = {
                     name: userProfile.ownerInfo.name,
                     address: `${userProfile.ownerInfo.address}, ${userProfile.ownerInfo.zipCode} ${userProfile.ownerInfo.city}`, // For Lease
                     addressMultiLine: `${userProfile.ownerInfo.address}\n${userProfile.ownerInfo.zipCode} ${userProfile.ownerInfo.city}`, // For Receipt
-                    signatureUrl: signatureBase64,
-                    logoUrl: logoBase64,
+                    signatureUrl: userProfile.signatureBase64 || userProfile.signatureUrl,
+                    logoUrl: userProfile.logoBase64 || userProfile.logoUrl,
                 };
             }
 

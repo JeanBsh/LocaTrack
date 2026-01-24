@@ -112,8 +112,11 @@ export default function PropertyDetail({ propertyId }: PropertyEditProps) {
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">
-                            {isEditing ? 'Modifier le bien' : `${property.type} - ${property.address.city}`}
+                            {isEditing ? 'Modifier le bien' : (property.denomination || `${property.type} - ${property.address.city}`)}
                         </h1>
+                        {!isEditing && property.denomination && (
+                            <p className="text-slate-500 text-sm mt-1">{property.type} - {property.address.city}</p>
+                        )}
                     </div>
                     <div className={`px-3 py-1 rounded-full text-sm font-medium ${property.status === 'DISPONIBLE' ? 'bg-green-100 text-green-800' :
                         property.status === 'OCCUPE' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
@@ -128,6 +131,17 @@ export default function PropertyDetail({ propertyId }: PropertyEditProps) {
                         {/* Section Identification */}
                         <div className="md:col-span-2">
                             <h3 className="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b">Identification</h3>
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Dénomination</label>
+                            <input
+                                disabled={!isEditing}
+                                {...register('denomination')}
+                                placeholder="Ex: Appartement Paris 11, Studio Bastille..."
+                                className="w-full p-2 border border-slate-200 rounded-lg disabled:bg-slate-50"
+                            />
+                            <p className="text-xs text-slate-500 mt-1">Nom personnalisé pour identifier facilement ce bien</p>
                         </div>
 
                         <div>

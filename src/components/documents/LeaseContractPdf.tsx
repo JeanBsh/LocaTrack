@@ -117,7 +117,7 @@ export const LeaseContractPdf = ({ tenant, property, lease, ownerInfo: ownerInfo
                 {/* Logo */}
                 {ownerInfo.logoUrl && (
                     <View style={{ alignItems: 'center', marginBottom: 15 }}>
-                        <Image src={ownerInfo.logoUrl} style={{ width: 80, height: 80, objectFit: 'contain' }} />
+                        <Image src={ownerInfo.logoUrl} style={{ width: 100, height: 100, objectFit: 'contain' }} />
                     </View>
                 )}
                 <Text style={styles.title}>CONTRAT DE LOCATION</Text>
@@ -222,16 +222,16 @@ export const LeaseContractPdf = ({ tenant, property, lease, ownerInfo: ownerInfo
                         <Text style={styles.bold}>Le BAILLEUR</Text>
                         <Text style={{ fontSize: 8, fontStyle: 'italic', marginBottom: 10 }}>(Signature précédée de la mention "Lu et approuvé")</Text>
                         {ownerInfo.signatureUrl ? (
-                            <Image src={ownerInfo.signatureUrl} style={{ width: 100, height: 50, objectFit: 'contain', marginBottom: 5 }} />
+                            <Image src={ownerInfo.signatureUrl} style={{ width: 140, height: 70, objectFit: 'contain', marginBottom: 5 }} />
                         ) : (
-                            <View style={{ height: 30 }} />
+                            <View style={{ height: 50 }} />
                         )}
                         <Text>{ownerInfo.name}</Text>
                     </View>
                     <View style={styles.signatureBox}>
                         <Text style={styles.bold}>Le LOCATAIRE</Text>
                         <Text style={{ fontSize: 8, fontStyle: 'italic', marginBottom: 10 }}>(Signature précédée de la mention "Lu et approuvé")</Text>
-                        <View style={{ height: 30 }} />
+                        <View style={{ height: 50 }} />
                         <Text>{tenant.personalInfo.firstName} {tenant.personalInfo.lastName}</Text>
                     </View>
                 </View>

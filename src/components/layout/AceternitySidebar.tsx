@@ -1,8 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
-import { LayoutDashboard, Building2, Users, FileText, PieChart, LogOut, UserCog } from "lucide-react";
-// Note: Building2 imported for nav links only, logo uses the original black shape
+import { LayoutDashboard, Building2, Users, FileText, PieChart, LogOut, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -15,7 +14,6 @@ const navLinks = [
     { label: "Locataires", href: "/locataires", icon: Users },
     { label: "Documents", href: "/documents", icon: FileText },
     { label: "Finance", href: "/finance", icon: PieChart },
-    { label: "Profil", href: "/profil", icon: UserCog },
 ];
 
 export default function AceternitySidebar({ children }: { children: React.ReactNode }) {
@@ -104,20 +102,18 @@ export default function AceternitySidebar({ children }: { children: React.ReactN
                     </div>
                     <div className="border-t border-border pt-3">
                         {user && (
-                            <div className="mb-1">
-                                <SidebarLink
-                                    link={{
-                                        label: user.email || "Utilisateur",
-                                        href: "#",
-                                        icon: (
-                                            <div className="h-7 w-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold">
-                                                {user.email ? user.email[0].toUpperCase() : "U"}
-                                            </div>
-                                        ),
-                                    }}
-                                    className="px-2 py-1.5"
-                                />
-                            </div>
+                            <Link
+                                href="/profil"
+                                className="flex items-center gap-2 px-3 py-2 mx-1 rounded-lg hover:bg-surface-hover transition-colors group/profile mb-1"
+                            >
+                                <div className="h-7 w-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                    {user.email ? user.email[0].toUpperCase() : "U"}
+                                </div>
+                                <span className="text-sm text-text-secondary truncate flex-1">
+                                    {user.email || "Utilisateur"}
+                                </span>
+                                <ChevronRight className="h-3.5 w-3.5 text-text-tertiary opacity-0 group-hover/profile:opacity-100 transition-opacity flex-shrink-0" />
+                            </Link>
                         )}
                         <div
                             className="cursor-pointer rounded-lg mx-1 hover:bg-danger-50 transition-colors duration-200"

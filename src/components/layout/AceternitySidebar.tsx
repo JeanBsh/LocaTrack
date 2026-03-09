@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase";
 
 const navLinks = [
-    { label: "Tableau de Bord", href: "/", icon: LayoutDashboard },
+    { label: "Tableau de Bord", href: "/dashboard", icon: LayoutDashboard },
     { label: "Biens", href: "/biens", icon: Building2 },
     { label: "Locataires", href: "/locataires", icon: Users },
     { label: "Documents", href: "/documents", icon: FileText },
@@ -30,7 +30,7 @@ export default function AceternitySidebar({ children }: { children: React.ReactN
         return () => unsubscribe();
     }, []);
 
-    if (pathname === "/login" || pathname === "/register") {
+    if (pathname === "/" || pathname === "/login" || pathname === "/register") {
         return <>{children}</>;
     }
 
@@ -44,7 +44,7 @@ export default function AceternitySidebar({ children }: { children: React.ReactN
     };
 
     const isActive = (href: string) => {
-        if (href === "/") return pathname === "/";
+        if (href === "/dashboard") return pathname === "/dashboard";
         return pathname.startsWith(href);
     };
 
@@ -151,7 +151,7 @@ export default function AceternitySidebar({ children }: { children: React.ReactN
 export const Logo = () => {
     return (
         <Link
-            href="/"
+            href="/dashboard"
             className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
         >
             <div className="h-5 w-6 bg-black rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />

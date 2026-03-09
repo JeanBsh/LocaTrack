@@ -24,14 +24,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     useEffect(() => {
         if (loading) return;
 
-        const publicPaths = ['/login', '/register'];
+        const publicPaths = ['/', '/login', '/register'];
         const isPublicPath = publicPaths.includes(pathname);
 
         if (!user && !isPublicPath) {
             router.push('/login');
-        } else if (user && isPublicPath) {
-            // Optionnel : rediriger vers le dashboard si déjà connecté et essaie d'aller sur login
-            router.push('/');
+        } else if (user && (pathname === '/login' || pathname === '/register')) {
+            router.push('/dashboard');
         }
     }, [user, loading, pathname, router]);
 
@@ -46,9 +45,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         );
     }
 
-    // Si on n'est pas connecté et sur une page protégée, on ne rend rien en attendant la redirection
-    // (cela évite le flash de contenu)
-    if (!user && pathname !== '/login' && pathname !== '/register') {
+    if (!user && !['/', '/login', '/register'].includes(pathname)) {
         return null;
     }
 

@@ -20,7 +20,7 @@ export default function LoginPage() {
 
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            router.push('/');
+            router.push('/dashboard');
         } catch (err) {
             setError('Email ou mot de passe incorrect.');
             console.error(err);

@@ -1,455 +1,388 @@
 'use client';
 
-import {
-    TrendingUp, TrendingDown, Wallet, AlertCircle, Users, Loader2,
-    Building2, Clock, AlertTriangle, FileText, ArrowRight, CalendarClock,
-    CheckCircle2, Plus, ChevronRight
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
-import { Property, Lease, Tenant } from '@/types';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
-import CountUp from 'react-countup';
-import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer
-} from 'recharts';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import {
+    Building2, FileText, PieChart, Users, Shield, Zap,
+    ArrowRight, Check, ChevronRight, Star
+} from 'lucide-react';
 
-// ─── Mock data for chart (revenue over 6 months) ──────────────────────────
-const generateRevenueData = (monthlyRevenue: number) => {
-    const months = ['Oct', 'Nov', 'Déc', 'Jan', 'Fév', 'Mar'];
-    const base = monthlyRevenue || 2400;
-    return months.map((month, i) => ({
-        month,
-        revenus: Math.round(base * (0.85 + Math.random() * 0.3)),
-        charges: Math.round(base * (0.1 + Math.random() * 0.08)),
-    }));
+// ─── Features ──────────────────────────────────────────────────────────────
+const features = [
+    {
+        icon: Building2,
+        title: 'Gestion des biens',
+        description: 'Centralisez tous vos biens immobiliers, suivez leur statut et leurs caractéristiques en un seul endroit.',
+    },
+    {
+        icon: Users,
+        title: 'Suivi des locataires',
+        description: 'Gérez les informations de vos locataires, garants et colocataires. Suivez les baux actifs.',
+    },
+    {
+        icon: FileText,
+        title: 'Documents automatisés',
+        description: 'Générez quittances de loyer, attestations et contrats de bail en PDF en quelques clics.',
+    },
+    {
+        icon: PieChart,
+        title: 'Suivi financier',
+        description: 'Visualisez vos revenus, charges et rentabilité brute et nette avec des graphiques clairs.',
+    },
+    {
+        icon: Shield,
+        title: 'Coffre-fort numérique',
+        description: 'Stockez et organisez tous vos documents importants : baux, factures, diagnostics, assurances.',
+    },
+    {
+        icon: Zap,
+        title: 'Alertes intelligentes',
+        description: 'Soyez notifié des loyers en retard, baux à renouveler et paiements reçus automatiquement.',
+    },
+];
+
+// ─── Pricing ───────────────────────────────────────────────────────────────
+const plans = [
+    {
+        name: 'Gratuit',
+        price: '0',
+        description: 'Pour démarrer et tester la plateforme',
+        features: [
+            'Jusqu\'à 2 biens',
+            'Gestion des locataires',
+            'Génération de quittances',
+            'Tableau de bord basique',
+        ],
+        cta: 'Commencer gratuitement',
+        highlighted: false,
+    },
+    {
+        name: 'Basic',
+        price: '9',
+        description: 'Pour les propriétaires avec plusieurs biens',
+        features: [
+            'Jusqu\'à 10 biens',
+            'Toutes les fonctionnalités gratuites',
+            'Coffre-fort documents',
+            'Suivi financier complet',
+            'Génération en masse',
+            'Support par email',
+        ],
+        cta: 'Essai gratuit 14 jours',
+        highlighted: true,
+    },
+    {
+        name: 'Pro',
+        price: '24',
+        description: 'Pour les gestionnaires professionnels',
+        features: [
+            'Biens illimités',
+            'Toutes les fonctionnalités Basic',
+            'Alertes intelligentes',
+            'Export comptable',
+            'Multi-utilisateurs',
+            'Support prioritaire',
+        ],
+        cta: 'Essai gratuit 14 jours',
+        highlighted: false,
+    },
+];
+
+// ─── Fade in animation ────────────────────────────────────────────────────
+const fadeUp = {
+    hidden: { opacity: 0, y: 30 },
+    visible: (i: number) => ({
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.5, delay: i * 0.1 },
+    }),
 };
 
-// ─── Mock alerts ───────────────────────────────────────────────────────────
-const mockAlerts = [
-    {
-        id: '1',
-        type: 'warning' as const,
-        icon: AlertTriangle,
-        title: 'Loyer en retard',
-        description: 'M. Dupont — Appartement Rue de la Paix',
-        time: 'Depuis 5 jours',
-    },
-    {
-        id: '2',
-        type: 'info' as const,
-        icon: CalendarClock,
-        title: 'Bail à renouveler',
-        description: 'Mme Martin — Studio Centre-Ville',
-        time: 'Expire dans 30 jours',
-    },
-    {
-        id: '3',
-        type: 'success' as const,
-        icon: CheckCircle2,
-        title: 'Paiement reçu',
-        description: 'M. Bernard — Maison Les Lilas',
-        time: 'Aujourd\'hui',
-    },
-];
-
-// ─── Mock recent activity ──────────────────────────────────────────────────
-const mockActivity = [
-    { id: '1', icon: Wallet, text: 'Loyer encaissé — M. Bernard', detail: '850 €', time: 'Il y a 2h', color: 'text-success-600 bg-success-50' },
-    { id: '2', icon: FileText, text: 'Quittance générée — Mme Martin', detail: 'Mars 2026', time: 'Il y a 5h', color: 'text-slate-600 bg-slate-100' },
-    { id: '3', icon: Users, text: 'Nouveau locataire ajouté', detail: 'M. Lefebvre', time: 'Hier', color: 'text-slate-600 bg-slate-100' },
-    { id: '4', icon: Building2, text: 'Bien mis à jour — T3 Marseille', detail: 'Statut: Occupé', time: 'Hier', color: 'text-warning-600 bg-warning-50' },
-    { id: '5', icon: CheckCircle2, text: 'Bail signé — Studio Lyon', detail: '12 mois', time: 'Il y a 3 jours', color: 'text-success-600 bg-success-50' },
-];
-
-// ─── Custom chart tooltip ──────────────────────────────────────────────────
-function CustomTooltip({ active, payload, label }: any) {
-    if (!active || !payload) return null;
+export default function LandingPage() {
     return (
-        <div className="bg-white rounded-lg shadow-lg border border-border p-3 text-sm">
-            <p className="font-semibold text-text-primary mb-1">{label}</p>
-            {payload.map((entry: any, i: number) => (
-                <p key={i} className="text-text-secondary">
-                    <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: entry.color }} />
-                    {entry.name === 'revenus' ? 'Revenus' : 'Charges'}: {entry.value.toLocaleString('fr-FR')} €
-                </p>
-            ))}
-        </div>
-    );
-}
-
-// ─── KPI Card Component ────────────────────────────────────────────────────
-function KpiCard({ icon: Icon, label, value, suffix, trend, trendLabel, color, delay }: {
-    icon: any;
-    label: string;
-    value: number;
-    suffix?: string;
-    trend?: 'up' | 'down' | 'neutral';
-    trendLabel?: string;
-    color: 'primary' | 'success' | 'danger' | 'warning';
-    delay: number;
-}) {
-    const colorMap = {
-        primary: { bg: 'bg-primary-50', text: 'text-primary-600', icon: 'bg-primary-100 text-primary-600' },
-        success: { bg: 'bg-success-50', text: 'text-success-600', icon: 'bg-success-100 text-success-600' },
-        danger: { bg: 'bg-danger-50', text: 'text-danger-600', icon: 'bg-danger-100 text-danger-600' },
-        warning: { bg: 'bg-warning-50', text: 'text-warning-600', icon: 'bg-warning-100 text-warning-600' },
-    };
-    const c = colorMap[color];
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay }}
-            className="bg-surface rounded-xl border border-border p-5 hover:shadow-md transition-shadow duration-300"
-        >
-            <div className="flex items-center justify-between mb-4">
-                <div className={`p-2.5 rounded-xl ${c.icon}`}>
-                    <Icon className="h-5 w-5" />
+        <div className="min-h-screen bg-white">
+            {/* ─── Navbar ──────────────────────────────────────────────────── */}
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-100">
+                <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+                    <Link href="/" className="flex items-center gap-2">
+                        <div className="h-5 w-6 bg-black rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm" />
+                        <span className="font-bold text-black text-lg tracking-tight">LocaTrack</span>
+                    </Link>
+                    <div className="hidden md:flex items-center gap-8 text-sm text-slate-600">
+                        <a href="#features" className="hover:text-black transition-colors">Fonctionnalités</a>
+                        <a href="#pricing" className="hover:text-black transition-colors">Tarifs</a>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href="/login"
+                            className="text-sm font-medium text-slate-700 hover:text-black transition-colors px-4 py-2"
+                        >
+                            Connexion
+                        </Link>
+                        <Link
+                            href="/register"
+                            className="text-sm font-medium bg-black text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors"
+                        >
+                            Commencer
+                        </Link>
+                    </div>
                 </div>
-                {trend && trendLabel && (
-                    <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
-                        trend === 'up' ? 'text-success-600 bg-success-50' :
-                        trend === 'down' ? 'text-danger-600 bg-danger-50' :
-                        'text-text-tertiary bg-slate-100'
-                    }`}>
-                        {trend === 'up' ? <TrendingUp className="h-3 w-3" /> :
-                         trend === 'down' ? <TrendingDown className="h-3 w-3" /> : null}
-                        {trendLabel}
-                    </div>
-                )}
-            </div>
-            <p className="text-2xl font-bold text-text-primary tracking-tight">
-                <CountUp end={value} duration={1.8} separator=" " decimals={0} />
-                {suffix && <span className="text-lg ml-0.5">{suffix}</span>}
-            </p>
-            <p className="text-sm text-text-tertiary mt-1">{label}</p>
-        </motion.div>
-    );
-}
+            </nav>
 
-// ─── Main Dashboard ────────────────────────────────────────────────────────
-export default function Dashboard() {
-    const [stats, setStats] = useState({
-        occupancyRate: 0,
-        monthlyRevenue: 0,
-        unpaidAmount: 0,
-        unpaidCount: 0,
-        totalProperties: 0,
-        totalTenants: 0,
-    });
-    const [loading, setLoading] = useState(true);
-    const router = useRouter();
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                router.push('/login');
-                return;
-            }
-
-            const fetchStats = async () => {
-                try {
-                    const qProperties = query(collection(db, 'biens'), where('userId', '==', user.uid));
-                    const propertiesSnapshot = await getDocs(qProperties);
-                    const properties = propertiesSnapshot.docs.map(doc => doc.data() as Property);
-
-                    const totalProperties = properties.length;
-                    const occupiedProperties = properties.filter(p => p.status === 'OCCUPE').length;
-                    const occupancyRate = totalProperties > 0 ? Math.round((occupiedProperties / totalProperties) * 100) : 0;
-
-                    const qLeases = query(collection(db, 'leases'), where('userId', '==', user.uid));
-                    const leasesSnapshot = await getDocs(qLeases);
-                    const leases = leasesSnapshot.docs.map(doc => doc.data() as Lease);
-
-                    const monthlyRevenue = leases.reduce((acc, lease) => {
-                        return acc + (lease.financials.currentRent || 0) + (lease.financials.currentCharges || 0);
-                    }, 0);
-
-                    const qTenants = query(collection(db, 'locataires'), where('userId', '==', user.uid));
-                    const tenantsSnapshot = await getDocs(qTenants);
-
-                    const unpaidAmount = 0;
-                    const unpaidCount = 0;
-
-                    setStats({
-                        occupancyRate,
-                        monthlyRevenue,
-                        unpaidAmount,
-                        unpaidCount,
-                        totalProperties,
-                        totalTenants: tenantsSnapshot.size,
-                    });
-                } catch (error) {
-                    console.error("Error fetching dashboard stats:", error);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            fetchStats();
-        });
-
-        return () => unsubscribe();
-    }, [router]);
-
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center h-full min-h-[60vh]">
-                <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="animate-spin text-slate-600" size={28} />
-                    <p className="text-sm text-text-tertiary">Chargement du tableau de bord...</p>
-                </div>
-            </div>
-        );
-    }
-
-    const revenueData = generateRevenueData(stats.monthlyRevenue);
-
-    return (
-        <div className="p-4 md:p-8 w-full max-w-7xl mx-auto space-y-6">
-            {/* Header */}
-            <motion.header
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-            >
-                <h1 className="text-2xl font-bold text-text-primary tracking-tight">
-                    Tableau de Bord
-                </h1>
-                <p className="text-text-tertiary text-sm mt-1">
-                    Vue d&apos;ensemble de votre parc immobilier
-                </p>
-            </motion.header>
-
-            {/* KPI Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KpiCard
-                    icon={Building2}
-                    label="Taux d'occupation"
-                    value={stats.occupancyRate}
-                    suffix="%"
-                    trend="up"
-                    trendLabel="+5%"
-                    color="primary"
-                    delay={0}
-                />
-                <KpiCard
-                    icon={Wallet}
-                    label="Revenus mensuels"
-                    value={stats.monthlyRevenue}
-                    suffix="€"
-                    trend="up"
-                    trendLabel="+12%"
-                    color="success"
-                    delay={0.1}
-                />
-                <KpiCard
-                    icon={AlertCircle}
-                    label="Impayés"
-                    value={stats.unpaidAmount}
-                    suffix="€"
-                    trend={stats.unpaidCount > 0 ? 'down' : 'neutral'}
-                    trendLabel={`${stats.unpaidCount} dossier${stats.unpaidCount > 1 ? 's' : ''}`}
-                    color={stats.unpaidCount > 0 ? 'danger' : 'success'}
-                    delay={0.2}
-                />
-                <KpiCard
-                    icon={Users}
-                    label="Locataires actifs"
-                    value={stats.totalTenants}
-                    trend="neutral"
-                    trendLabel={`${stats.totalProperties} bien${stats.totalProperties > 1 ? 's' : ''}`}
-                    color="primary"
-                    delay={0.3}
-                />
-            </div>
-
-            {/* Chart + Alerts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Revenue Chart */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.2 }}
-                    className="lg:col-span-2 bg-surface rounded-xl border border-border p-5"
-                >
-                    <div className="flex items-center justify-between mb-5">
-                        <div>
-                            <h2 className="text-base font-semibold text-text-primary">Revenus & Charges</h2>
-                            <p className="text-xs text-text-tertiary mt-0.5">Évolution sur 6 mois</p>
+            {/* ─── Hero ────────────────────────────────────────────────────── */}
+            <section className="pt-32 pb-20 px-6">
+                <div className="max-w-4xl mx-auto text-center">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                    >
+                        <div className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-full mb-6">
+                            <Star className="h-3 w-3" />
+                            Gestion locative simplifiée
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-text-tertiary">
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
-                                Revenus
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-2.5 h-2.5 rounded-full bg-warning-500" />
-                                Charges
-                            </div>
-                        </div>
-                    </div>
-                    <ResponsiveContainer width="100%" height={260}>
-                        <AreaChart data={revenueData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorRevenus" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#334155" stopOpacity={0.15} />
-                                    <stop offset="95%" stopColor="#334155" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="colorCharges" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.15} />
-                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                            <XAxis
-                                dataKey="month"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fontSize: 12, fill: '#94a3b8' }}
-                            />
-                            <YAxis
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fontSize: 12, fill: '#94a3b8' }}
-                                tickFormatter={(v) => `${(v / 1000).toFixed(1)}k`}
-                            />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area
-                                type="monotone"
-                                dataKey="revenus"
-                                stroke="#334155"
-                                strokeWidth={2}
-                                fill="url(#colorRevenus)"
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="charges"
-                                stroke="#f59e0b"
-                                strokeWidth={2}
-                                fill="url(#colorCharges)"
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </motion.div>
+                        <h1 className="text-4xl md:text-6xl font-bold text-black tracking-tight leading-tight">
+                            Gérez vos biens
+                            <br />
+                            <span className="text-slate-400">sans prise de tête</span>
+                        </h1>
+                        <p className="mt-6 text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
+                            LocaTrack centralise la gestion de vos biens, locataires et documents.
+                            Automatisez vos quittances, suivez vos revenus et gardez le contrôle sur votre patrimoine immobilier.
+                        </p>
+                    </motion.div>
 
-                {/* Alerts / To-do */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.3 }}
-                    className="bg-surface rounded-xl border border-border p-5"
-                >
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-base font-semibold text-text-primary">Alertes</h2>
-                        <span className="text-xs text-text-tertiary bg-slate-100 px-2 py-0.5 rounded-full">
-                            {mockAlerts.length}
-                        </span>
-                    </div>
-                    <div className="space-y-3">
-                        {mockAlerts.map((alert) => {
-                            const AlertIcon = alert.icon;
-                            const colorMap = {
-                                warning: 'bg-warning-50 text-warning-600 border-warning-100',
-                                info: 'bg-primary-50 text-primary-600 border-primary-100',
-                                success: 'bg-success-50 text-success-600 border-success-100',
-                            };
-                            return (
-                                <div
-                                    key={alert.id}
-                                    className={`flex items-start gap-3 p-3 rounded-lg border ${colorMap[alert.type]} cursor-pointer hover:shadow-sm transition-shadow`}
-                                >
-                                    <AlertIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium leading-tight">{alert.title}</p>
-                                        <p className="text-xs opacity-75 mt-0.5 truncate">{alert.description}</p>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+                    >
+                        <Link
+                            href="/register"
+                            className="flex items-center gap-2 bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-slate-800 transition-colors text-sm shadow-lg shadow-slate-200"
+                        >
+                            Commencer gratuitement
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                        <Link
+                            href="#features"
+                            className="flex items-center gap-2 text-slate-600 px-6 py-3 rounded-lg font-medium hover:text-black transition-colors text-sm"
+                        >
+                            Découvrir les fonctionnalités
+                            <ChevronRight className="h-4 w-4" />
+                        </Link>
+                    </motion.div>
+
+                    {/* Dashboard Preview */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 40 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.4 }}
+                        className="mt-16 relative"
+                    >
+                        <div className="bg-slate-100 rounded-2xl p-2 shadow-2xl shadow-slate-200/50">
+                            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                                {/* Mock dashboard preview */}
+                                <div className="p-6">
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <div className="h-3 w-3 rounded-full bg-red-400" />
+                                        <div className="h-3 w-3 rounded-full bg-yellow-400" />
+                                        <div className="h-3 w-3 rounded-full bg-green-400" />
+                                        <span className="text-xs text-slate-400 ml-2">app.locatrack.fr/dashboard</span>
                                     </div>
-                                    <span className="text-[10px] opacity-60 whitespace-nowrap mt-0.5">{alert.time}</span>
+                                    <div className="grid grid-cols-4 gap-3 mb-4">
+                                        {[
+                                            { label: 'Taux d\'occupation', value: '87%' },
+                                            { label: 'Revenus mensuels', value: '3 450 €' },
+                                            { label: 'Impayés', value: '0 €' },
+                                            { label: 'Locataires', value: '5' },
+                                        ].map((kpi) => (
+                                            <div key={kpi.label} className="bg-slate-50 rounded-lg p-3">
+                                                <p className="text-xs text-slate-400">{kpi.label}</p>
+                                                <p className="text-lg font-bold text-slate-900 mt-1">{kpi.value}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="col-span-2 bg-slate-50 rounded-lg p-4 h-32" />
+                                        <div className="bg-slate-50 rounded-lg p-4 h-32" />
+                                    </div>
                                 </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* ─── Features ────────────────────────────────────────────────── */}
+            <section id="features" className="py-20 px-6 bg-slate-50">
+                <div className="max-w-6xl mx-auto">
+                    <motion.div
+                        initial="hidden"
+                        whileInView="visible"
+                        viewport={{ once: true }}
+                        variants={fadeUp}
+                        custom={0}
+                        className="text-center mb-14"
+                    >
+                        <h2 className="text-3xl md:text-4xl font-bold text-black tracking-tight">
+                            Tout ce dont vous avez besoin
+                        </h2>
+                        <p className="mt-4 text-slate-500 max-w-xl mx-auto">
+                            Une plateforme complète pour gérer votre patrimoine immobilier de A à Z.
+                        </p>
+                    </motion.div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {features.map((feature, idx) => {
+                            const FeatureIcon = feature.icon;
+                            return (
+                                <motion.div
+                                    key={idx}
+                                    initial="hidden"
+                                    whileInView="visible"
+                                    viewport={{ once: true }}
+                                    variants={fadeUp}
+                                    custom={idx}
+                                    className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                                >
+                                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center mb-4">
+                                        <FeatureIcon className="h-5 w-5 text-slate-700" />
+                                    </div>
+                                    <h3 className="text-base font-semibold text-black mb-2">{feature.title}</h3>
+                                    <p className="text-sm text-slate-500 leading-relaxed">{feature.description}</p>
+                                </motion.div>
                             );
                         })}
                     </div>
-                </motion.div>
-            </div>
+                </div>
+            </section>
 
-            {/* Recent Activity + Quick Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Recent Activity */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.35 }}
-                    className="lg:col-span-2 bg-surface rounded-xl border border-border p-5"
-                >
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-base font-semibold text-text-primary">Activité récente</h2>
-                        <button className="text-xs text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1">
-                            Tout voir <ChevronRight className="h-3 w-3" />
-                        </button>
-                    </div>
-                    <div className="space-y-1">
-                        {mockActivity.map((item, idx) => {
-                            const ActivityIcon = item.icon;
-                            return (
-                                <div
-                                    key={item.id}
-                                    className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover transition-colors group"
-                                >
-                                    <div className={`p-2 rounded-lg ${item.color} flex-shrink-0`}>
-                                        <ActivityIcon className="h-3.5 w-3.5" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm text-text-primary truncate">{item.text}</p>
-                                        <p className="text-xs text-text-tertiary">{item.detail}</p>
-                                    </div>
-                                    <span className="text-xs text-text-tertiary whitespace-nowrap">{item.time}</span>
+            {/* ─── Pricing ─────────────────────────────────────────────────── */}
+            <section id="pricing" className="py-20 px-6">
+                <div className="max-w-5xl mx-auto">
+                    <motion.div
+                        initial="hidden"
+                        whileInView="visible"
+                        viewport={{ once: true }}
+                        variants={fadeUp}
+                        custom={0}
+                        className="text-center mb-14"
+                    >
+                        <h2 className="text-3xl md:text-4xl font-bold text-black tracking-tight">
+                            Tarifs simples et transparents
+                        </h2>
+                        <p className="mt-4 text-slate-500 max-w-xl mx-auto">
+                            Commencez gratuitement, évoluez quand vous êtes prêt.
+                        </p>
+                    </motion.div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        {plans.map((plan, idx) => (
+                            <motion.div
+                                key={idx}
+                                initial="hidden"
+                                whileInView="visible"
+                                viewport={{ once: true }}
+                                variants={fadeUp}
+                                custom={idx}
+                                className={`rounded-2xl p-6 flex flex-col ${
+                                    plan.highlighted
+                                        ? 'bg-black text-white ring-2 ring-black shadow-xl shadow-slate-200/50 scale-[1.02]'
+                                        : 'bg-white border border-slate-200'
+                                }`}
+                            >
+                                <div className="mb-6">
+                                    <h3 className={`text-lg font-semibold ${plan.highlighted ? 'text-white' : 'text-black'}`}>
+                                        {plan.name}
+                                    </h3>
+                                    <p className={`text-sm mt-1 ${plan.highlighted ? 'text-slate-300' : 'text-slate-500'}`}>
+                                        {plan.description}
+                                    </p>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </motion.div>
 
-                {/* Quick Actions */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.4 }}
-                    className="bg-surface rounded-xl border border-border p-5"
-                >
-                    <h2 className="text-base font-semibold text-text-primary mb-4">Actions rapides</h2>
-                    <div className="space-y-2">
-                        {[
-                            { label: 'Ajouter un bien', href: '/biens/nouveau', icon: Building2, color: 'text-slate-700 bg-slate-100' },
-                            { label: 'Ajouter un locataire', href: '/locataires/nouveau', icon: Users, color: 'text-success-600 bg-success-50' },
-                            { label: 'Générer une quittance', href: '/documents', icon: FileText, color: 'text-warning-600 bg-warning-50' },
-                        ].map((action) => {
-                            const ActionIcon = action.icon;
-                            return (
-                                <Link
-                                    key={action.href}
-                                    href={action.href}
-                                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-slate-300 hover:bg-slate-50 transition-all group"
-                                >
-                                    <div className={`p-2 rounded-lg ${action.color}`}>
-                                        <ActionIcon className="h-4 w-4" />
-                                    </div>
-                                    <span className="text-sm font-medium text-text-primary group-hover:text-slate-900 transition-colors">
-                                        {action.label}
+                                <div className="mb-6">
+                                    <span className={`text-4xl font-bold ${plan.highlighted ? 'text-white' : 'text-black'}`}>
+                                        {plan.price}€
                                     </span>
-                                    <ArrowRight className="h-4 w-4 text-text-tertiary ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <span className={`text-sm ${plan.highlighted ? 'text-slate-400' : 'text-slate-500'}`}>/mois</span>
+                                </div>
+
+                                <ul className="space-y-3 mb-8 flex-grow">
+                                    {plan.features.map((feature, fIdx) => (
+                                        <li key={fIdx} className="flex items-start gap-2.5">
+                                            <Check className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
+                                                plan.highlighted ? 'text-green-400' : 'text-slate-400'
+                                            }`} />
+                                            <span className={`text-sm ${
+                                                plan.highlighted ? 'text-slate-200' : 'text-slate-600'
+                                            }`}>
+                                                {feature}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <Link
+                                    href="/register"
+                                    className={`w-full text-center py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                                        plan.highlighted
+                                            ? 'bg-white text-black hover:bg-slate-100'
+                                            : 'bg-black text-white hover:bg-slate-800'
+                                    }`}
+                                >
+                                    {plan.cta}
                                 </Link>
-                            );
-                        })}
+                            </motion.div>
+                        ))}
                     </div>
+                </div>
+            </section>
+
+            {/* ─── CTA ─────────────────────────────────────────────────────── */}
+            <section className="py-20 px-6 bg-slate-50">
+                <motion.div
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    variants={fadeUp}
+                    custom={0}
+                    className="max-w-3xl mx-auto text-center"
+                >
+                    <h2 className="text-3xl md:text-4xl font-bold text-black tracking-tight">
+                        Prêt à simplifier votre gestion locative ?
+                    </h2>
+                    <p className="mt-4 text-slate-500 mb-8">
+                        Rejoignez les propriétaires qui gagnent du temps avec LocaTrack.
+                    </p>
+                    <Link
+                        href="/register"
+                        className="inline-flex items-center gap-2 bg-black text-white px-8 py-3.5 rounded-lg font-medium hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+                    >
+                        Créer mon compte gratuitement
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
                 </motion.div>
-            </div>
+            </section>
+
+            {/* ─── Footer ──────────────────────────────────────────────────── */}
+            <footer className="border-t border-slate-200 py-10 px-6">
+                <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="h-4 w-5 bg-black rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm" />
+                        <span className="font-bold text-sm text-black">LocaTrack</span>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                        &copy; {new Date().getFullYear()} LocaTrack. Tous droits réservés.
+                    </p>
+                    <div className="flex gap-6 text-xs text-slate-500">
+                        <a href="#" className="hover:text-black transition-colors">Mentions légales</a>
+                        <a href="#" className="hover:text-black transition-colors">Confidentialité</a>
+                        <a href="#" className="hover:text-black transition-colors">Contact</a>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 }

@@ -157,10 +157,12 @@ export const MobileSidebar = ({
 export const SidebarLink = ({
     link,
     className,
+    active,
     ...props
 }: {
     link: Links;
     className?: string;
+    active?: boolean;
     props?: LinkProps;
 }) => {
     const { open, animate, setOpen } = useSidebar();
@@ -172,7 +174,6 @@ export const SidebarLink = ({
                 className
             )}
             onClick={() => {
-                // Close sidebar on mobile when clicking a link
                 const isMobile = window.innerWidth < 768;
                 if (isMobile && open) {
                     setOpen(false);
@@ -186,7 +187,12 @@ export const SidebarLink = ({
                     display: animate ? (open ? "inline-block" : "none") : "inline-block",
                     opacity: animate ? (open ? 1 : 0) : 1,
                 }}
-                className="text-neutral-700 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+                className={cn(
+                    "text-sm transition duration-150 whitespace-pre inline-block !p-0 !m-0 group-hover/sidebar:translate-x-1",
+                    active
+                        ? "text-primary-900 font-semibold"
+                        : "text-text-secondary group-hover/sidebar:text-text-primary"
+                )}
             >
                 {link.label}
             </motion.span>

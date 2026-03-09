@@ -2,60 +2,26 @@
 import React, { useState, useEffect } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { LayoutDashboard, Building2, Users, FileText, PieChart, LogOut, UserCog } from "lucide-react";
+// Note: Building2 imported for nav links only, logo uses the original black shape
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase";
 
+const navLinks = [
+    { label: "Tableau de Bord", href: "/", icon: LayoutDashboard },
+    { label: "Biens", href: "/biens", icon: Building2 },
+    { label: "Locataires", href: "/locataires", icon: Users },
+    { label: "Documents", href: "/documents", icon: FileText },
+    { label: "Finance", href: "/finance", icon: PieChart },
+    { label: "Profil", href: "/profil", icon: UserCog },
+];
+
 export default function AceternitySidebar({ children }: { children: React.ReactNode }) {
-    const links = [
-        {
-            label: "Tableau de Bord",
-            href: "/",
-            icon: (
-                <LayoutDashboard className="text-neutral-700 h-5 w-5 flex-shrink-0" />
-            ),
-        },
-        {
-            label: "Biens",
-            href: "/biens",
-            icon: (
-                <Building2 className="text-neutral-700 h-5 w-5 flex-shrink-0" />
-            ),
-        },
-        {
-            label: "Locataires",
-            href: "/locataires",
-            icon: (
-                <Users className="text-neutral-700 h-5 w-5 flex-shrink-0" />
-            ),
-        },
-        {
-            label: "Documents",
-            href: "/documents",
-            icon: (
-                <FileText className="text-neutral-700 h-5 w-5 flex-shrink-0" />
-            ),
-        },
-        {
-            label: "Finance",
-            href: "/finance",
-            icon: (
-                <PieChart className="text-neutral-700 h-5 w-5 flex-shrink-0" />
-            ),
-        },
-        {
-            label: "Profil",
-            href: "/profil",
-            icon: (
-                <UserCog className="text-neutral-700 h-5 w-5 flex-shrink-0" />
-            ),
-        },
-    ];
     const [open, setOpen] = useState(false);
     const pathname = usePathname();
-    const [user, setUser] = useState<any>(null); // Using any or firebase User type would require import
+    const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -77,41 +43,84 @@ export default function AceternitySidebar({ children }: { children: React.ReactN
         }
     };
 
+    const isActive = (href: string) => {
+        if (href === "/") return pathname === "/";
+        return pathname.startsWith(href);
+    };
+
+    const links = navLinks.map((link) => {
+        const active = isActive(link.href);
+        const Icon = link.icon;
+        return {
+            label: link.label,
+            href: link.href,
+            icon: (
+                <div className={cn(
+                    "p-1.5 rounded-lg transition-colors duration-200",
+                    active
+                        ? "bg-primary-900 text-white shadow-sm"
+                        : "text-text-tertiary group-hover/sidebar:text-primary-800"
+                )}>
+                    <Icon className="h-4 w-4" />
+                </div>
+            ),
+        };
+    });
+
     return (
-        <div
-            className={cn(
-                "flex flex-col md:flex-row bg-white w-full flex-1 mx-auto overflow-hidden",
-                "h-screen"
-            )}
-        >
+        <div className={cn(
+            "flex flex-col md:flex-row w-full flex-1 mx-auto overflow-hidden",
+            "h-screen"
+        )}>
             <Sidebar open={open} setOpen={setOpen} animate={false}>
-                <SidebarBody className="justify-between gap-10 bg-white border-r border-gray-200">
+                <SidebarBody className="justify-between gap-6 bg-surface border-r border-border">
                     <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
                         <Logo />
-                        <div className="mt-8 flex flex-col gap-2">
-                            {links.map((link, idx) => (
-                                <SidebarLink key={idx} link={link} />
-                            ))}
+                        <div className="mt-6 flex flex-col gap-0.5">
+                            {links.map((link, idx) => {
+                                const active = isActive(link.href);
+                                return (
+                                    <div
+                                        key={idx}
+                                        className={cn(
+                                            "rounded-lg mx-1 transition-colors duration-200",
+                                            active
+                                                ? "bg-primary-50"
+                                                : "hover:bg-surface-hover"
+                                        )}
+                                    >
+                                        <SidebarLink
+                                            link={link}
+                                            className={cn(
+                                                "px-2 py-2",
+                                                active && "font-semibold"
+                                            )}
+                                            active={active}
+                                        />
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
-                    <div>
+                    <div className="border-t border-border pt-3">
                         {user && (
-                            <div className="mb-2 border-b pb-2 border-gray-100">
+                            <div className="mb-1">
                                 <SidebarLink
                                     link={{
                                         label: user.email || "Utilisateur",
                                         href: "#",
                                         icon: (
-                                            <div className="h-5 w-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                                            <div className="h-7 w-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold">
                                                 {user.email ? user.email[0].toUpperCase() : "U"}
                                             </div>
                                         ),
                                     }}
+                                    className="px-2 py-1.5"
                                 />
                             </div>
                         )}
                         <div
-                            className="cursor-pointer"
+                            className="cursor-pointer rounded-lg mx-1 hover:bg-danger-50 transition-colors duration-200"
                             onClick={handleLogout}
                         >
                             <SidebarLink
@@ -119,16 +128,19 @@ export default function AceternitySidebar({ children }: { children: React.ReactN
                                     label: "Déconnexion",
                                     href: "#",
                                     icon: (
-                                        <LogOut className="text-neutral-700 h-5 w-5 flex-shrink-0" />
+                                        <div className="p-1.5 rounded-lg text-text-tertiary group-hover/sidebar:text-danger-600 transition-colors">
+                                            <LogOut className="h-4 w-4" />
+                                        </div>
                                     ),
                                 }}
+                                className="px-2 py-2"
                             />
                         </div>
                     </div>
                 </SidebarBody>
             </Sidebar>
-            <div className="flex flex-1 overflow-y-auto bg-white">
-                <div className="p-2 md:p-10 bg-white flex flex-col gap-2 flex-1 w-full h-full">
+            <div className="flex flex-1 overflow-y-auto bg-background">
+                <div className="flex flex-col flex-1 w-full h-full">
                     {children}
                 </div>
             </div>
@@ -146,7 +158,7 @@ export const Logo = () => {
             <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="font-medium text-black whitespace-pre"
+                className="font-bold text-black whitespace-pre text-base tracking-tight"
             >
                 LocaTrack
             </motion.span>

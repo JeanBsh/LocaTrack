@@ -26,13 +26,12 @@ const styles = StyleSheet.create({
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
     },
     headerRight: {
         textAlign: 'right',
     },
     title: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
         textTransform: 'uppercase',
         color: '#2563eb',
@@ -216,9 +215,9 @@ export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: own
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
                         {ownerInfo.logoUrl && (
-                            <Image src={ownerInfo.logoUrl} style={{ width: 70, height: 70, objectFit: 'contain' }} />
+                            <Image src={ownerInfo.logoUrl} style={{ width: 60, height: 60, marginRight: 15, objectFit: 'contain' }} />
                         )}
-                        <Text style={styles.title}>Quittance de Loyer</Text>
+                        <Text style={styles.title}>Quittance de Loyer - {lease.type === 'MEUBLE' ? 'Meublé' : 'Non Meublé'}</Text>
                     </View>
                     <View style={styles.headerRight}>
                         <Text style={{ fontSize: 9, color: '#64748b' }}>Date d'émission</Text>
@@ -247,22 +246,17 @@ export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: own
                     <View style={styles.addressBox}>
                         <Text style={styles.addressBoxTitle}>Locataire(s)</Text>
                         <Text style={[styles.addressContent, { fontWeight: 'bold' }]}>
-                            {tenant.personalInfo?.lastName?.toUpperCase()} {tenant.personalInfo?.firstName}
+                            {[
+                                `${tenant.personalInfo?.lastName?.toUpperCase() || ''} ${tenant.personalInfo?.firstName || ''}`,
+                                ...(tenant.roommates || []).map(rm => `${rm.lastName?.toUpperCase() || ''} ${rm.firstName || ''}`)
+                            ].filter(Boolean).join(' et ')}
                         </Text>
-                        {tenant.roommates?.map((rm, i) => (
-                            <Text key={i} style={styles.addressContent}>& {rm.lastName?.toUpperCase()} {rm.firstName}</Text>
-                        ))}
+                        <Text style={styles.addressContent}>{property.address?.street}</Text>
+                        <Text style={styles.addressContent}>{property.address?.zipCode} {property.address?.city}</Text>
                     </View>
                 </View>
 
-                {/* Property Info */}
-                <View style={styles.propertyInfo}>
-                    <Text style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Adresse de la location</Text>
-                    <Text style={{ fontSize: 11, fontWeight: 'bold' }}>
-                        {property.address?.street}, {property.address?.zipCode} {property.address?.city}
-                    </Text>
-                    {/* Room for apartment number if needed in future schema */}
-                </View>
+
 
                 {/* Financial Table */}
                 <Text style={styles.tableTitle}>Détail du règlement</Text>
@@ -273,7 +267,7 @@ export const RentReceiptPdf = ({ tenant, property, lease, period, ownerInfo: own
                     </View>
 
                     <View style={styles.tableRow}>
-                        <Text style={styles.colDesc}>Loyer mensuel ({lease.type === 'MEUBLE' ? 'Meublé' : 'Nu'})</Text>
+                        <Text style={styles.colDesc}>Loyer mensuel</Text>
                         <Text style={styles.colAmount}>{rent.toFixed(2)} €</Text>
                     </View>
 

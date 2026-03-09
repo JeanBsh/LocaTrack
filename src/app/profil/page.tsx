@@ -8,6 +8,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { UserProfile } from '@/types';
 import { useForm } from 'react-hook-form';
 import { User, Save, Loader2, CheckCircle, Building2, X, Image, PenTool } from 'lucide-react';
+import heic2any from 'heic2any'; // Import without dynamic for now, checking client-side execution
 
 interface ProfileFormData {
     name: string;
@@ -69,7 +70,7 @@ export default function ProfilPage() {
     }, [reset]);
 
     // Compress and resize image for Firestore storage (max 1MB limit)
-    const compressImage = (file: File, maxWidth: number, maxHeight: number, quality: number = 0.8): Promise<{ base64: string; blob: Blob }> => {
+    const compressImage = (file: File | Blob, maxWidth: number, maxHeight: number, quality: number = 0.8): Promise<{ base64: string; blob: Blob }> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -94,7 +95,9 @@ export default function ProfilPage() {
                         return;
                     }
 
-                    // Draw image with white background (for transparency)
+                    // Draw image with white background (for transparency handling if converting transparent PNGs, though mostly for JPEGs)
+                    // Note: If we want transparency for PNG signatures, we should remove this fill or check file type.
+                    // However, original code had this, keeping behavior consistent for now unless asked.
                     ctx.fillStyle = '#FFFFFF';
                     ctx.fillRect(0, 0, width, height);
                     ctx.drawImage(img, 0, 0, width, height);
@@ -121,7 +124,7 @@ export default function ProfilPage() {
         });
     };
 
-    const uploadImage = async (file: File, type: 'signature' | 'logo') => {
+    const uploadImage = async (file: File | Blob, type: 'signature' | 'logo') => {
         if (!userId) return null;
 
         const isSignature = type === 'signature';
@@ -190,20 +193,66 @@ export default function ProfilPage() {
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'signature' | 'logo') => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'signature' | 'logo') => {
         const file = e.target.files?.[0];
         if (file) {
-            // Validate file type
-            if (!file.type.startsWith('image/')) {
-                alert('Veuillez sélectionner une image');
+            // ALLOWED TYPES: PNG, JPG, JPEG, HEIC, HEIF
+            const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/heic', 'image/heif'];
+            // Normalize type - sometimes HEIC can have empty type or different casing
+            const fileType = file.type.toLowerCase();
+            const fileName = file.name.toLowerCase();
+
+            const isHeic = fileType === 'image/heic' || fileType === 'image/heif' || fileName.endsWith('.heic') || fileName.endsWith('.heif');
+            const isValidType = allowedTypes.includes(fileType) || isHeic;
+
+            if (!isValidType) {
+                alert('Format de fichier non supporté. Veuillez utiliser uniquement PNG, JPG ou HEIC.');
+                // Reset input
+                e.target.value = '';
                 return;
             }
+
             // Validate file size (max 10MB - will be compressed automatically)
             if (file.size > 10 * 1024 * 1024) {
                 alert('L\'image ne doit pas dépasser 10 Mo');
+                e.target.value = '';
                 return;
             }
-            uploadImage(file, type);
+
+            let fileToUpload: File | Blob = file;
+
+            // Handle HEIC conversion
+            if (isHeic) {
+                try {
+                    const isSignature = type === 'signature';
+                    isSignature ? setUploadingSignature(true) : setUploadingLogo(true);
+
+                    const convertedBlob = await heic2any({
+                        blob: file,
+                        toType: 'image/jpeg',
+                        quality: 0.8
+                    });
+
+                    // heic2any can return a blob or array of blobs. We need a single blob.
+                    if (Array.isArray(convertedBlob)) {
+                        fileToUpload = convertedBlob[0];
+                    } else {
+                        fileToUpload = convertedBlob;
+                    }
+                } catch (error) {
+                    console.error("HEIC conversion failed:", error);
+                    alert("Impossible de convertir l'image HEIC. Veuillez essayer un autre format ou une autre image.");
+                    const isSignature = type === 'signature';
+                    isSignature ? setUploadingSignature(false) : setUploadingLogo(false);
+                    return;
+                }
+            }
+
+            // Pass the file (original or converted) to existing logic
+            await uploadImage(fileToUpload, type);
+
+            // Reset input so valid change event fires if selecting same file again after error/removal
+            e.target.value = '';
         }
     };
 
@@ -410,7 +459,7 @@ export default function ProfilPage() {
                                     type="file"
                                     ref={signatureInputRef}
                                     onChange={(e) => handleFileChange(e, 'signature')}
-                                    accept="image/*"
+                                    accept=".png, .jpg, .jpeg, .heic, .heif"
                                     className="hidden"
                                 />
                                 {signatureUrl ? (
@@ -441,7 +490,7 @@ export default function ProfilPage() {
                                             <>
                                                 <PenTool className="h-8 w-8 mx-auto text-slate-400 mb-2" />
                                                 <p className="text-sm text-slate-600 font-medium">Cliquez pour ajouter</p>
-                                                <p className="text-xs text-slate-400 mt-1">PNG, JPG (max 10 Mo)</p>
+                                                <p className="text-xs text-slate-400 mt-1">PNG, JPG, HEIC (max 10 Mo)</p>
                                             </>
                                         )}
                                     </button>
@@ -457,7 +506,7 @@ export default function ProfilPage() {
                                     type="file"
                                     ref={logoInputRef}
                                     onChange={(e) => handleFileChange(e, 'logo')}
-                                    accept="image/*"
+                                    accept=".png, .jpg, .jpeg, .heic, .heif"
                                     className="hidden"
                                 />
                                 {logoUrl ? (
@@ -488,7 +537,7 @@ export default function ProfilPage() {
                                             <>
                                                 <Image className="h-8 w-8 mx-auto text-slate-400 mb-2" />
                                                 <p className="text-sm text-slate-600 font-medium">Cliquez pour ajouter</p>
-                                                <p className="text-xs text-slate-400 mt-1">PNG, JPG (max 10 Mo)</p>
+                                                <p className="text-xs text-slate-400 mt-1">PNG, JPG, HEIC (max 10 Mo)</p>
                                             </>
                                         )}
                                     </button>

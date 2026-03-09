@@ -6,7 +6,8 @@ import { db, auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Tenant } from '@/types';
 import Link from 'next/link';
-import { User, Phone, Mail, ShieldCheck, Loader2 } from 'lucide-react';
+import { Users, Phone, Mail, ShieldCheck, Loader2 } from 'lucide-react';
+import EmptyState from '@/components/ui/EmptyState';
 
 export default function TenantList() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -41,64 +42,63 @@ export default function TenantList() {
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
-                <Loader2 className="animate-spin text-blue-600" size={32} />
+                <Loader2 className="animate-spin text-slate-600" size={28} />
             </div>
         );
     }
 
     if (tenants.length === 0) {
         return (
-            <div className="text-center py-12 bg-white rounded-xl border border-slate-100 shadow-sm">
-                <User className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-                <h3 className="text-lg font-medium text-slate-900">Aucun locataire</h3>
-                <p className="mt-1 text-slate-500">Commencez par ajouter votre premier locataire.</p>
-                <div className="mt-6">
-                    <Link
-                        href="/locataires/nouveau"
-                        className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                        Ajouter un locataire
-                    </Link>
-                </div>
+            <div className="bg-surface rounded-xl border border-border">
+                <EmptyState
+                    icon={Users}
+                    title="Aucun locataire"
+                    description="Commencez par ajouter votre premier locataire pour gérer vos locations."
+                    actionLabel="Ajouter un locataire"
+                    onAction={() => window.location.href = '/locataires/nouveau'}
+                />
             </div>
         );
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {tenants.map((tenant) => (
                 <Link key={tenant.id} href={`/locataires/${tenant.id}`} className="block group">
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
+                    <div className="bg-surface rounded-xl border border-border p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
                         <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-3">
-                                <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg">
+                                <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-bold text-sm">
                                     {tenant.personalInfo.firstName[0]}{tenant.personalInfo.lastName[0]}
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                                    <h3 className="font-semibold text-text-primary text-sm group-hover:text-slate-700 transition-colors">
                                         {tenant.personalInfo.firstName} {tenant.personalInfo.lastName}
                                     </h3>
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tenant.status === 'ACTIF' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                        }`}>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                        tenant.status === 'ACTIF'
+                                            ? 'bg-success-50 text-success-600'
+                                            : 'bg-slate-100 text-text-tertiary'
+                                    }`}>
                                         {tenant.status}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2 text-sm text-slate-600">
+                        <div className="space-y-2 text-sm text-text-secondary">
                             <div className="flex items-center gap-2">
-                                <Mail size={16} className="text-slate-400" />
+                                <Mail size={14} className="text-text-tertiary" />
                                 <span className="truncate">{tenant.personalInfo.email}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Phone size={16} className="text-slate-400" />
+                                <Phone size={14} className="text-text-tertiary" />
                                 <span>{tenant.personalInfo.phone}</span>
                             </div>
                             {tenant.guarantors && tenant.guarantors.length > 0 && (
-                                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-50">
-                                    <ShieldCheck size={16} className="text-green-500" />
-                                    <span className="text-xs font-medium text-slate-500">
+                                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border-light">
+                                    <ShieldCheck size={14} className="text-success-500" />
+                                    <span className="text-xs font-medium text-text-tertiary">
                                         {tenant.guarantors.length} Garant(s)
                                     </span>
                                 </div>

@@ -40,6 +40,13 @@ service cloud.firestore {
       allow update, delete: if isOwner();
     }
 
+    // Règles pour la collection 'vault-documents' (Coffre-fort)
+    match /vault-documents/{document} {
+      allow read: if isOwner();
+      allow create: if isValidCreate();
+      allow update, delete: if isOwner();
+    }
+
     // Règles pour la collection 'profiles' (Profils utilisateur)
     // Le document ID est l'UID de l'utilisateur
     match /profiles/{userId} {

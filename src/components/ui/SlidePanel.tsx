@@ -9,9 +9,10 @@ interface SlidePanelProps {
     onClose: () => void;
     title?: string;
     children: React.ReactNode;
+    footer?: React.ReactNode;
 }
 
-export default function SlidePanel({ open, onClose, title, children }: SlidePanelProps) {
+export default function SlidePanel({ open, onClose, title, children, footer }: SlidePanelProps) {
     useEffect(() => {
         if (open) {
             document.body.style.overflow = "hidden";
@@ -60,6 +61,12 @@ export default function SlidePanel({ open, onClose, title, children }: SlidePane
                         <div className="flex-1 overflow-y-auto">
                             {children}
                         </div>
+                        {/* Footer (fixed at bottom) */}
+                        {footer && (
+                            <div className="flex-shrink-0">
+                                {footer}
+                            </div>
+                        )}
                     </motion.div>
                 </>
             )}

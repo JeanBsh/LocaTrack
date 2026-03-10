@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { collection, onSnapshot, query, where, doc, addDoc, deleteDoc, orderBy, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, auth, storage } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Tenant, Lease, Property, UserProfile } from '@/types';
 import RentReceiptGenerator from '@/components/documents/RentReceiptGenerator';
@@ -11,7 +12,7 @@ import LeaseContractGenerator from '@/components/documents/LeaseContractGenerato
 import {
     Search, FileText, User, MapPin, AlertCircle, Loader2, Download,
     CheckSquare, Square, X, FolderOpen, Upload, File, FileImage, FileSpreadsheet,
-    MoreVertical, Calendar, HardDrive
+    MoreVertical, Calendar, HardDrive, Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -23,17 +24,33 @@ import { RentCertificatePdf } from '@/components/documents/RentCertificatePdf';
 import { LeaseContractPdf } from '@/components/documents/LeaseContractPdf';
 import { motion } from 'framer-motion';
 import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
 
-// ─── Mock data for Coffre-fort ─────────────────────────────────────────────
-const mockVaultDocuments = [
-    { id: '1', name: 'Bail_Dupont_2024.pdf', type: 'pdf', category: 'Bail', tenant: 'M. Dupont', size: '245 Ko', date: '15/01/2024' },
-    { id: '2', name: 'Facture_Plomberie_Mars.pdf', type: 'pdf', category: 'Facture', tenant: '—', size: '128 Ko', date: '12/03/2024' },
-    { id: '3', name: 'Etat_des_lieux_Martin.pdf', type: 'pdf', category: 'État des lieux', tenant: 'Mme Martin', size: '1.2 Mo', date: '01/09/2023' },
-    { id: '4', name: 'Assurance_Habitation_2024.pdf', type: 'pdf', category: 'Assurance', tenant: '—', size: '890 Ko', date: '20/01/2024' },
-    { id: '5', name: 'Diagnostics_T3_Marseille.pdf', type: 'pdf', category: 'Diagnostic', tenant: '—', size: '2.1 Mo', date: '05/06/2023' },
-    { id: '6', name: 'Photo_Appartement_01.jpg', type: 'image', category: 'Photo', tenant: '—', size: '3.4 Mo', date: '10/08/2023' },
-    { id: '7', name: 'Releve_Charges_2023.xlsx', type: 'spreadsheet', category: 'Comptabilité', tenant: '—', size: '56 Ko', date: '31/12/2023' },
-];
+// ─── Vault Document type ────────────────────────────────────────────────────
+interface VaultDocument {
+    id: string;
+    name: string;
+    type: string;
+    size: number;
+    storagePath: string;
+    downloadUrl: string;
+    uploadedAt: Date;
+    userId: string;
+}
+
+function getFileType(fileName: string): string {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    if (['pdf'].includes(ext)) return 'pdf';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image';
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return 'spreadsheet';
+    return 'default';
+}
+
+function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} o`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} Ko`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+}
 
 const fileIconMap: Record<string, { icon: any; color: string }> = {
     pdf: { icon: FileText, color: 'text-danger-600 bg-danger-50' },
@@ -42,15 +59,6 @@ const fileIconMap: Record<string, { icon: any; color: string }> = {
     default: { icon: File, color: 'text-slate-600 bg-slate-100' },
 };
 
-const categoryColors: Record<string, string> = {
-    'Bail': 'bg-slate-100 text-slate-700',
-    'Facture': 'bg-warning-50 text-warning-600',
-    'État des lieux': 'bg-success-50 text-success-600',
-    'Assurance': 'bg-primary-100 text-primary-700',
-    'Diagnostic': 'bg-danger-50 text-danger-600',
-    'Photo': 'bg-warning-50 text-warning-600',
-    'Comptabilité': 'bg-success-50 text-success-600',
-};
 
 export default function DocumentsPage() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -75,11 +83,20 @@ export default function DocumentsPage() {
     });
     const [isGeneratingBulk, setIsGeneratingBulk] = useState(false);
 
+    // Vault state
+    const [vaultDocuments, setVaultDocuments] = useState<VaultDocument[]>([]);
+    const [vaultSearch, setVaultSearch] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     useEffect(() => {
         let unsubscribeTenants: (() => void) | undefined;
         let unsubscribeLeases: (() => void) | undefined;
         let unsubscribeProperties: (() => void) | undefined;
         let unsubscribeProfile: (() => void) | undefined;
+        let unsubscribeVault: (() => void) | undefined;
 
         const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
             if (!user) {
@@ -114,6 +131,18 @@ export default function DocumentsPage() {
                     setUserProfile(docSnap.data() as UserProfile);
                 }
             });
+
+            const qVault = query(collection(db, 'vault-documents'), where('userId', '==', user.uid), orderBy('uploadedAt', 'desc'));
+            unsubscribeVault = onSnapshot(qVault, (snapshot) => {
+                setVaultDocuments(snapshot.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        id: d.id,
+                        ...data,
+                        uploadedAt: data.uploadedAt?.toDate?.() || new Date(),
+                    } as VaultDocument;
+                }));
+            });
         });
 
         return () => {
@@ -122,6 +151,7 @@ export default function DocumentsPage() {
             if (unsubscribeLeases) unsubscribeLeases();
             if (unsubscribeProperties) unsubscribeProperties();
             if (unsubscribeProfile) unsubscribeProfile();
+            if (unsubscribeVault) unsubscribeVault();
         };
     }, []);
 
@@ -253,6 +283,99 @@ export default function DocumentsPage() {
         }
     };
 
+    // ─── Vault handlers ──────────────────────────────────────────────────
+    const handleVaultUpload = useCallback(async (files: FileList | File[]) => {
+        const user = auth.currentUser;
+        if (!user || files.length === 0) return;
+
+        setIsUploading(true);
+        try {
+            for (const file of Array.from(files)) {
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`Le fichier "${file.name}" dépasse la limite de 10 Mo.`);
+                    continue;
+                }
+
+                const storagePath = `vault/${user.uid}/${Date.now()}_${file.name}`;
+                const storageRef = ref(storage, storagePath);
+                await uploadBytes(storageRef, file);
+                const downloadUrl = await getDownloadURL(storageRef);
+
+                await addDoc(collection(db, 'vault-documents'), {
+                    name: file.name,
+                    type: getFileType(file.name),
+                    size: file.size,
+                    storagePath,
+                    downloadUrl,
+                    uploadedAt: Timestamp.now(),
+                    userId: user.uid,
+                });
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Une erreur est survenue lors de l\'upload.');
+        } finally {
+            setIsUploading(false);
+        }
+    }, []);
+
+    const handleVaultDownload = useCallback(async (vaultDoc: VaultDocument) => {
+        try {
+            const link = document.createElement('a');
+            link.href = vaultDoc.downloadUrl;
+            link.target = '_blank';
+            link.download = vaultDoc.name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Download error:', error);
+        }
+    }, []);
+
+    const handleVaultDelete = useCallback(async (vaultDoc: VaultDocument) => {
+        if (!confirm(`Supprimer "${vaultDoc.name}" ?`)) return;
+
+        setDeletingId(vaultDoc.id);
+        try {
+            const storageRef = ref(storage, vaultDoc.storagePath);
+            await deleteObject(storageRef);
+            await deleteDoc(doc(db, 'vault-documents', vaultDoc.id));
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Une erreur est survenue lors de la suppression.');
+        } finally {
+            setDeletingId(null);
+        }
+    }, []);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        if (e.dataTransfer.files.length > 0) {
+            handleVaultUpload(e.dataTransfer.files);
+        }
+    }, [handleVaultUpload]);
+
+    const filteredVaultDocuments = vaultDocuments.filter(d =>
+        d.name.toLowerCase().includes(vaultSearch.toLowerCase())
+    );
+
+    const totalVaultSize = vaultDocuments.reduce((acc, d) => acc + d.size, 0);
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-full min-h-[60vh]">
@@ -265,17 +388,14 @@ export default function DocumentsPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-4 md:p-8 pb-32">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-text-primary tracking-tight">Documents</h1>
-                    <p className="text-text-tertiary text-sm mt-1">Générez et gérez vos documents administratifs</p>
-                </div>
-            </div>
+        <div className="w-full p-6 md:p-12 pb-32 space-y-6">
+            <PageHeader
+                title="Documents"
+                description="Générez et gérez vos documents administratifs"
+            />
 
             {/* Tabs */}
-            <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-lg w-fit">
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
                 <button
                     onClick={() => setActiveTab('generation')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-all cursor-pointer ${
@@ -333,7 +453,7 @@ export default function DocumentsPage() {
                     </div>
 
                     {/* Tenants Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
                         {filteredTenants.map(tenant => {
                             const { activeLease, property } = getTenantDetails(tenant);
                             const isSelected = selectedTenantIds.has(tenant.id);
@@ -341,89 +461,87 @@ export default function DocumentsPage() {
                             return (
                                 <div
                                     key={tenant.id}
-                                    className={`relative bg-surface rounded-xl border transition-all duration-200 flex flex-col ${
+                                    className={`relative bg-surface rounded-xl border transition-all duration-200 flex flex-col overflow-hidden ${
                                         isSelected
                                             ? 'border-slate-400 shadow-md ring-1 ring-slate-400'
                                             : 'border-border hover:shadow-md'
                                     }`}
                                 >
-                                    {activeLease && property && (
-                                        <div className="absolute top-4 right-4 z-10">
-                                            <button
-                                                onClick={() => toggleTenantSelection(tenant.id)}
-                                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                                                    isSelected
-                                                        ? 'bg-slate-800 text-white'
-                                                        : 'bg-surface text-text-tertiary hover:text-text-secondary border border-border'
-                                                }`}
-                                            >
-                                                <CheckSquare size={18} />
-                                            </button>
-                                        </div>
-                                    )}
+                                    {/* Card Header with tenant info */}
+                                    <div className="p-5 pb-4">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                                    {tenant.personalInfo.firstName[0]}{tenant.personalInfo.lastName[0]}
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-sm font-semibold text-text-primary leading-tight">
+                                                        {tenant.personalInfo.firstName} {tenant.personalInfo.lastName}
+                                                    </h2>
+                                                    {property ? (
+                                                        <div className="flex items-center gap-1 mt-1 text-xs text-text-tertiary">
+                                                            <MapPin size={11} className="flex-shrink-0" />
+                                                            <span className="truncate max-w-[180px]">{property.address.city} · {property.type}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-1 mt-1 text-xs text-danger-600">
+                                                            <AlertCircle size={11} />
+                                                            Aucun bail actif
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
 
-                                    {/* Card Header */}
-                                    <div className="p-5 border-b border-border-light">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-bold text-sm">
-                                                {tenant.personalInfo.firstName[0]}{tenant.personalInfo.lastName[0]}
-                                            </div>
-                                            <div>
-                                                <h2 className="text-sm font-semibold text-text-primary leading-tight">
-                                                    {tenant.personalInfo.firstName} {tenant.personalInfo.lastName}
-                                                </h2>
-                                                <span className="text-xs text-text-tertiary">Locataire</span>
-                                            </div>
+                                            {activeLease && property && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); toggleTenantSelection(tenant.id); }}
+                                                    className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                                        isSelected
+                                                            ? 'bg-slate-900 text-white shadow-sm'
+                                                            : 'bg-surface-hover text-text-tertiary hover:text-text-secondary border border-border'
+                                                    }`}
+                                                >
+                                                    <CheckSquare size={16} />
+                                                </button>
+                                            )}
                                         </div>
-
-                                        {property ? (
-                                            <div className="mt-3 p-2.5 bg-surface-hover rounded-lg">
-                                                <div className="flex items-center text-xs text-text-secondary font-medium">
-                                                    <MapPin size={12} className="text-text-tertiary mr-1.5 flex-shrink-0" />
-                                                    {property.address.street}
-                                                </div>
-                                                <div className="text-xs text-text-tertiary mt-0.5 pl-[18px]">
-                                                    {property.address.zipCode} {property.address.city} · {property.type}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="mt-3 p-2.5 bg-danger-50 rounded-lg">
-                                                <div className="flex items-center text-xs text-danger-600">
-                                                    <AlertCircle size={12} className="mr-1.5" />
-                                                    Aucun bail actif
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
 
-                                    {/* Card Actions */}
-                                    <div className="p-5 flex-grow flex flex-col justify-end">
+                                    {/* Document actions */}
+                                    <div className="px-5 pb-5 flex-grow flex flex-col justify-end">
                                         {activeLease && property ? (
-                                            <div className="space-y-2.5">
-                                                <RentReceiptGenerator
-                                                    tenant={tenant}
-                                                    property={property}
-                                                    lease={activeLease}
-                                                    ownerProfile={userProfile}
-                                                />
-                                                <div className="grid grid-cols-2 gap-2.5">
-                                                    <RentCertificateGenerator
-                                                        tenant={tenant}
-                                                        property={property}
-                                                        lease={activeLease}
-                                                        ownerProfile={userProfile}
-                                                    />
-                                                    <LeaseContractGenerator
+                                            <div className="space-y-2">
+                                                <div className="bg-surface-hover rounded-lg p-3">
+                                                    <RentReceiptGenerator
                                                         tenant={tenant}
                                                         property={property}
                                                         lease={activeLease}
                                                         ownerProfile={userProfile}
                                                     />
                                                 </div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div className="bg-surface-hover rounded-lg p-3">
+                                                        <RentCertificateGenerator
+                                                            tenant={tenant}
+                                                            property={property}
+                                                            lease={activeLease}
+                                                            ownerProfile={userProfile}
+                                                        />
+                                                    </div>
+                                                    <div className="bg-surface-hover rounded-lg p-3">
+                                                        <LeaseContractGenerator
+                                                            tenant={tenant}
+                                                            property={property}
+                                                            lease={activeLease}
+                                                            ownerProfile={userProfile}
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
                                         ) : (
-                                            <div className="flex flex-col items-center justify-center py-4 text-center bg-surface-hover rounded-lg border border-dashed border-border">
-                                                <p className="text-xs text-text-tertiary font-medium">Documents indisponibles</p>
+                                            <div className="flex flex-col items-center justify-center py-6 text-center bg-surface-hover rounded-lg border border-dashed border-border">
+                                                <FileText className="h-5 w-5 text-text-tertiary mb-2" />
+                                                <p className="text-xs text-text-tertiary font-medium">Associez un bail pour générer des documents</p>
                                             </div>
                                         )}
                                     </div>
@@ -432,7 +550,7 @@ export default function DocumentsPage() {
                         })}
 
                         {filteredTenants.length === 0 && (
-                            <div className="col-span-full">
+                            <div className="col-span-full bg-surface rounded-xl border border-border">
                                 <EmptyState
                                     icon={User}
                                     title="Aucun locataire trouvé"
@@ -449,24 +567,59 @@ export default function DocumentsPage() {
             {/* ─── TAB: Coffre-fort ───────────────────────────────────────────── */}
             {activeTab === 'vault' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+                    {/* Hidden file input */}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.xls,.xlsx,.csv,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) => {
+                            if (e.target.files) handleVaultUpload(e.target.files);
+                            e.target.value = '';
+                        }}
+                    />
+
                     {/* Upload Zone */}
-                    <div className="border-2 border-dashed border-border rounded-xl p-8 mb-6 text-center hover:border-slate-400 hover:bg-surface-hover transition-all cursor-pointer group">
-                        <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3 group-hover:bg-slate-200 transition-colors">
-                            <Upload className="h-5 w-5 text-text-tertiary" />
+                    <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => !isUploading && fileInputRef.current?.click()}
+                        className={`border-2 border-dashed rounded-xl p-10 mb-6 text-center transition-all cursor-pointer group ${
+                            isDragging
+                                ? 'border-slate-500 bg-slate-100 scale-[1.01]'
+                                : 'border-border hover:border-slate-400 hover:bg-surface-hover/50'
+                        }`}
+                    >
+                        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4 group-hover:bg-slate-200 group-hover:scale-105 transition-all">
+                            {isUploading ? (
+                                <Loader2 className="h-6 w-6 text-slate-500 animate-spin" />
+                            ) : (
+                                <Upload className="h-6 w-6 text-slate-500" />
+                            )}
                         </div>
-                        <p className="text-sm font-medium text-text-primary">
-                            Glissez-déposez vos fichiers ici
+                        <p className="text-sm font-semibold text-text-primary">
+                            {isUploading ? 'Upload en cours...' : isDragging ? 'Déposez vos fichiers' : 'Glissez-déposez vos fichiers ici'}
                         </p>
-                        <p className="text-xs text-text-tertiary mt-1">
-                            ou <span className="text-slate-700 font-medium underline underline-offset-2">parcourir</span> · PDF, JPG, PNG, XLSX (max 10 Mo)
+                        <p className="text-xs text-text-tertiary mt-1.5">
+                            ou <span className="text-slate-700 font-medium underline underline-offset-2 cursor-pointer">parcourir vos fichiers</span>
+                        </p>
+                        <p className="text-[11px] text-text-tertiary mt-2">
+                            PDF, JPG, PNG, XLSX · max 10 Mo par fichier
                         </p>
                     </div>
 
-                    {/* Storage info */}
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2 text-sm text-text-secondary">
-                            <HardDrive className="h-4 w-4 text-text-tertiary" />
-                            <span><strong>{mockVaultDocuments.length}</strong> documents · 8.1 Mo utilisés</span>
+                    {/* Storage info bar */}
+                    <div className="flex items-center justify-between mb-5 bg-surface-hover rounded-lg px-4 py-3">
+                        <div className="flex items-center gap-3">
+                            <div className="p-1.5 rounded-lg bg-slate-200">
+                                <HardDrive className="h-4 w-4 text-slate-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-text-primary">{vaultDocuments.length} document{vaultDocuments.length !== 1 ? 's' : ''}</p>
+                                <p className="text-xs text-text-tertiary">{formatFileSize(totalVaultSize)} utilisés</p>
+                            </div>
                         </div>
                         <div className="relative max-w-xs w-full hidden md:block">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -474,64 +627,80 @@ export default function DocumentsPage() {
                             </div>
                             <input
                                 type="text"
-                                placeholder="Rechercher un document..."
+                                placeholder="Rechercher..."
                                 className="block w-full pl-9 pr-3 py-2 border border-border rounded-lg text-sm bg-surface placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-slate-300 transition-all"
+                                value={vaultSearch}
+                                onChange={(e) => setVaultSearch(e.target.value)}
                             />
                         </div>
                     </div>
 
                     {/* Documents Table */}
-                    <div className="bg-surface rounded-xl border border-border overflow-hidden">
-                        {/* Table Header */}
-                        <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-3 bg-surface-hover border-b border-border text-xs font-medium text-text-tertiary uppercase tracking-wider">
-                            <div className="col-span-5">Document</div>
-                            <div className="col-span-2">Catégorie</div>
-                            <div className="col-span-2">Locataire</div>
-                            <div className="col-span-1">Taille</div>
-                            <div className="col-span-1">Date</div>
-                            <div className="col-span-1"></div>
+                    {filteredVaultDocuments.length === 0 ? (
+                        <div className="bg-surface rounded-xl border border-border">
+                            <EmptyState
+                                icon={FolderOpen}
+                                title={vaultSearch ? 'Aucun document trouvé' : 'Votre coffre-fort est vide'}
+                                description={vaultSearch ? 'Essayez avec un autre terme de recherche.' : 'Déposez vos fichiers pour les stocker en toute sécurité.'}
+                            />
                         </div>
+                    ) : (
+                        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+                            {/* Table Header */}
+                            <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-3 bg-surface-hover border-b border-border text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                                <div className="col-span-6">Document</div>
+                                <div className="col-span-2">Taille</div>
+                                <div className="col-span-2">Date</div>
+                                <div className="col-span-2"></div>
+                            </div>
 
-                        {/* Table Rows */}
-                        {mockVaultDocuments.map((docItem, idx) => {
-                            const fileInfo = fileIconMap[docItem.type] || fileIconMap.default;
-                            const FileIcon = fileInfo.icon;
-                            return (
-                                <div
-                                    key={docItem.id}
-                                    className={`grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-5 py-3.5 items-center hover:bg-surface-hover transition-colors cursor-pointer ${
-                                        idx < mockVaultDocuments.length - 1 ? 'border-b border-border-light' : ''
-                                    }`}
-                                >
-                                    {/* Name */}
-                                    <div className="md:col-span-5 flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${fileInfo.color} flex-shrink-0`}>
-                                            <FileIcon className="h-4 w-4" />
+                            {/* Table Rows */}
+                            {filteredVaultDocuments.map((vaultDoc, idx) => {
+                                const fileInfo = fileIconMap[vaultDoc.type] || fileIconMap.default;
+                                const FileIcon = fileInfo.icon;
+                                const isDeleting = deletingId === vaultDoc.id;
+                                return (
+                                    <div
+                                        key={vaultDoc.id}
+                                        className={`grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-5 py-3.5 items-center hover:bg-surface-hover transition-colors group/row ${
+                                            idx < filteredVaultDocuments.length - 1 ? 'border-b border-border-light' : ''
+                                        } ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}
+                                    >
+                                        {/* Name */}
+                                        <div className="md:col-span-6 flex items-center gap-3 min-w-0">
+                                            <div className={`p-2 rounded-lg ${fileInfo.color} flex-shrink-0`}>
+                                                <FileIcon className="h-4 w-4" />
+                                            </div>
+                                            <span className="text-sm font-medium text-text-primary truncate">{vaultDoc.name}</span>
                                         </div>
-                                        <span className="text-sm font-medium text-text-primary truncate">{docItem.name}</span>
+                                        {/* Size */}
+                                        <div className="md:col-span-2 text-xs text-text-tertiary">{formatFileSize(vaultDoc.size)}</div>
+                                        {/* Date */}
+                                        <div className="md:col-span-2 text-xs text-text-tertiary">
+                                            {format(vaultDoc.uploadedAt, 'dd/MM/yyyy')}
+                                        </div>
+                                        {/* Actions */}
+                                        <div className="md:col-span-2 flex justify-end gap-1">
+                                            <button
+                                                onClick={() => handleVaultDownload(vaultDoc)}
+                                                className="p-1.5 rounded-lg hover:bg-slate-200 text-text-tertiary opacity-0 group-hover/row:opacity-100 transition-all cursor-pointer"
+                                                title="Télécharger"
+                                            >
+                                                <Download className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleVaultDelete(vaultDoc)}
+                                                className="p-1.5 rounded-lg hover:bg-danger-50 text-text-tertiary hover:text-danger-600 opacity-0 group-hover/row:opacity-100 transition-all cursor-pointer"
+                                                title="Supprimer"
+                                            >
+                                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                            </button>
+                                        </div>
                                     </div>
-                                    {/* Category */}
-                                    <div className="md:col-span-2">
-                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${categoryColors[docItem.category] || 'bg-slate-100 text-slate-600'}`}>
-                                            {docItem.category}
-                                        </span>
-                                    </div>
-                                    {/* Tenant */}
-                                    <div className="md:col-span-2 text-sm text-text-secondary">{docItem.tenant}</div>
-                                    {/* Size */}
-                                    <div className="md:col-span-1 text-xs text-text-tertiary">{docItem.size}</div>
-                                    {/* Date */}
-                                    <div className="md:col-span-1 text-xs text-text-tertiary">{docItem.date}</div>
-                                    {/* Actions */}
-                                    <div className="md:col-span-1 flex justify-end">
-                                        <button className="p-1.5 rounded-lg hover:bg-slate-100 text-text-tertiary transition-colors cursor-pointer">
-                                            <Download className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </motion.div>
             )}
 
@@ -539,7 +708,7 @@ export default function DocumentsPage() {
             <div className={`fixed bottom-0 left-0 right-0 bg-surface border-t border-border shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] transition-transform duration-300 transform z-50 ${
                 selectedTenantIds.size > 0 ? 'translate-y-0' : 'translate-y-full'
             }`}>
-                <div className="max-w-7xl mx-auto px-4 py-4 md:px-8">
+                <div className="w-full px-6 py-4 md:px-12">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <div className="bg-slate-200 text-slate-800 font-bold px-3 py-1 rounded-full text-sm">

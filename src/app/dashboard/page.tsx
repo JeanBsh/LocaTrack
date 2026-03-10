@@ -17,6 +17,7 @@ import {
     ResponsiveContainer
 } from 'recharts';
 import { motion } from 'framer-motion';
+import PageHeader from '@/components/ui/PageHeader';
 import Link from 'next/link';
 
 // ─── Mock data for chart (revenue over 6 months) ──────────────────────────
@@ -213,20 +214,11 @@ export default function Dashboard() {
     const revenueData = generateRevenueData(stats.monthlyRevenue);
 
     return (
-        <div className="p-4 md:p-8 w-full max-w-7xl mx-auto space-y-6">
-            {/* Header */}
-            <motion.header
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-            >
-                <h1 className="text-2xl font-bold text-text-primary tracking-tight">
-                    Tableau de Bord
-                </h1>
-                <p className="text-text-tertiary text-sm mt-1">
-                    Vue d&apos;ensemble de votre parc immobilier
-                </p>
-            </motion.header>
+        <div className="w-full p-6 md:p-12 space-y-6">
+            <PageHeader
+                title="Tableau de Bord"
+                description="Vue d'ensemble de votre parc immobilier"
+            />
 
             {/* KPI Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

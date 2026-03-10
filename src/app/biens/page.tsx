@@ -8,7 +8,7 @@ import { Property } from '@/types';
 import Link from 'next/link';
 import {
     Building2, Loader2, MapPin, Ruler, DoorOpen, Plus, Calendar,
-    Wallet, Edit3, Trash2, X, Save, ChevronRight
+    Edit3, Trash2, Save, ChevronRight
 } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
 import PageHeader from '@/components/ui/PageHeader';
@@ -115,7 +115,7 @@ export default function PropertiesPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-4 md:p-8">
+        <div className="w-full p-6 md:p-12 space-y-6">
             <PageHeader
                 title="Mes Biens"
                 description="Gérez votre parc immobilier"
@@ -203,9 +203,50 @@ export default function PropertiesPage() {
                 open={!!selectedProperty}
                 onClose={closePanel}
                 title={isEditing ? 'Modifier le bien' : 'Détail du bien'}
+                footer={selectedProperty && (
+                    <div className="px-6 py-4 border-t border-border bg-surface flex items-center justify-between">
+                        {isEditing ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsEditing(false); reset(selectedProperty); }}
+                                    className="px-4 py-2 text-sm text-text-secondary hover:bg-surface-hover rounded-lg transition-colors cursor-pointer"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSubmit(onSubmit)}
+                                    disabled={isSaving}
+                                    className="flex items-center gap-2 px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer"
+                                >
+                                    {isSaving ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+                                    Enregistrer
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm text-danger-600 hover:bg-danger-50 rounded-lg transition-colors cursor-pointer"
+                                >
+                                    <Trash2 size={14} /> Supprimer
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditing(true)}
+                                    className="flex items-center gap-2 px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors cursor-pointer"
+                                >
+                                    <Edit3 size={14} /> Modifier
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
             >
                 {selectedProperty && (
-                    <form onSubmit={handleSubmit(onSubmit)}>
+                    <div>
                         {/* Property Header inside panel */}
                         <div className="px-6 py-5 bg-surface-hover border-b border-border">
                             <div className="flex items-center justify-between mb-2">
@@ -321,47 +362,7 @@ export default function PropertiesPage() {
                                 </div>
                             )}
                         </div>
-
-                        {/* Bottom actions */}
-                        <div className="px-6 py-4 border-t border-border bg-surface flex items-center justify-between flex-shrink-0">
-                            {isEditing ? (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={() => { setIsEditing(false); reset(selectedProperty); }}
-                                        className="px-4 py-2 text-sm text-text-secondary hover:bg-surface-hover rounded-lg transition-colors cursor-pointer"
-                                    >
-                                        Annuler
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={isSaving}
-                                        className="flex items-center gap-2 px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer"
-                                    >
-                                        {isSaving ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
-                                        Enregistrer
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={handleDelete}
-                                        className="flex items-center gap-2 px-4 py-2 text-sm text-danger-600 hover:bg-danger-50 rounded-lg transition-colors cursor-pointer"
-                                    >
-                                        <Trash2 size={14} /> Supprimer
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsEditing(true)}
-                                        className="flex items-center gap-2 px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors cursor-pointer"
-                                    >
-                                        <Edit3 size={14} /> Modifier
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    </form>
+                    </div>
                 )}
             </SlidePanel>
         </div>

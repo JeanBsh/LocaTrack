@@ -48,16 +48,16 @@ export default function RentReceiptGenerator({ tenant, property, lease, ownerPro
     return (
         <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex-shrink-0">
-                    <Receipt size={18} className="text-white" />
+                <div className="p-2 bg-slate-900 rounded-lg flex-shrink-0">
+                    <Receipt size={16} className="text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <h5 className="font-semibold text-slate-800 text-sm">Quittance de Loyer</h5>
+                    <h5 className="font-semibold text-text-primary text-sm">Quittance de Loyer</h5>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                        <Calendar size={12} className="text-slate-400 flex-shrink-0" />
+                        <Calendar size={11} className="text-text-tertiary flex-shrink-0" />
                         <input
                             type="month"
-                            className="text-xs text-slate-500 border-none bg-transparent p-0 focus:outline-none focus:ring-0 w-full"
+                            className="text-xs text-text-tertiary border-none bg-transparent p-0 focus:outline-none focus:ring-0 w-full cursor-pointer"
                             value={selectedMonth}
                             onChange={(e) => setSelectedMonth(e.target.value)}
                         />
@@ -67,7 +67,7 @@ export default function RentReceiptGenerator({ tenant, property, lease, ownerPro
 
             {ownerProfile && !ownerInfo ? (
                 <div className="flex items-center justify-center px-4">
-                    <Loader2 className="animate-spin text-blue-500" size={20} />
+                    <Loader2 className="animate-spin text-slate-600" size={20} />
                 </div>
             ) : (
                 <RentReceiptDownloader

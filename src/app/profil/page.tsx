@@ -8,6 +8,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { UserProfile } from '@/types';
 import { useForm } from 'react-hook-form';
 import { User, Save, Loader2, CheckCircle, Building2, X, Image, PenTool } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
 import heic2any from 'heic2any'; // Import without dynamic for now, checking client-side execution
 
 interface ProfileFormData {
@@ -307,19 +308,11 @@ export default function ProfilPage() {
     }
 
     return (
-        <div className="max-w-3xl mx-auto p-4 md:p-8">
-            {/* Header */}
-            <div className="mb-8">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white">
-                        <User size={20} />
-                    </div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Mon Profil</h1>
-                </div>
-                <p className="text-slate-500">
-                    Configurez vos informations de propriétaire. Ces informations seront utilisées dans les documents générés (quittances, contrats, attestations).
-                </p>
-            </div>
+        <div className="w-full p-6 md:p-12 space-y-6">
+            <PageHeader
+                title="Mon Profil"
+                description="Configurez vos informations de propriétaire pour les documents générés"
+            />
 
             {/* Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

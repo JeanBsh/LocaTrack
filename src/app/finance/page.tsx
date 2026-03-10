@@ -11,6 +11,7 @@ import {
     Building2, ArrowUpRight, ArrowDownRight, PieChart, Plus, Minus
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import PageHeader from '@/components/ui/PageHeader';
 import CountUp from 'react-countup';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -142,11 +143,11 @@ export default function FinancePage() {
 
     if (!hasData) {
         return (
-            <div className="p-4 md:p-8 w-full max-w-7xl mx-auto">
-                <header className="mb-6">
-                    <h1 className="text-2xl font-bold text-text-primary tracking-tight">Finance</h1>
-                    <p className="text-text-tertiary text-sm mt-1">Suivi financier de votre parc immobilier</p>
-                </header>
+            <div className="w-full p-6 md:p-12">
+                <PageHeader
+                    title="Finance"
+                    description="Suivi financier de votre parc immobilier"
+                />
                 <div className="bg-surface rounded-xl border border-border">
                     <EmptyState
                         icon={PieChart}
@@ -161,16 +162,11 @@ export default function FinancePage() {
     }
 
     return (
-        <div className="p-4 md:p-8 w-full max-w-7xl mx-auto space-y-6">
-            {/* Header */}
-            <motion.header
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-            >
-                <h1 className="text-2xl font-bold text-text-primary tracking-tight">Finance</h1>
-                <p className="text-text-tertiary text-sm mt-1">Suivi financier de votre parc immobilier</p>
-            </motion.header>
+        <div className="w-full p-6 md:p-12 space-y-6">
+            <PageHeader
+                title="Finance"
+                description="Suivi financier de votre parc immobilier"
+            />
 
             {/* KPI Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

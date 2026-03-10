@@ -39,18 +39,18 @@ export default function LeaseContractGenerator({ tenant, property, lease, ownerP
     return (
         <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex-shrink-0">
-                    <ScrollText size={18} className="text-white" />
+                <div className="p-2 bg-slate-500 rounded-lg flex-shrink-0">
+                    <ScrollText size={16} className="text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <h5 className="font-semibold text-slate-800 text-sm">Contrat de Location</h5>
-                    <p className="text-xs text-slate-500 truncate">Bail d'habitation</p>
+                    <h5 className="font-semibold text-text-primary text-sm">Contrat</h5>
+                    <p className="text-xs text-text-tertiary truncate">Bail d'habitation</p>
                 </div>
             </div>
 
             {ownerProfile && !ownerInfo ? (
                 <div className="flex items-center justify-center px-4">
-                    <Loader2 className="animate-spin text-emerald-500" size={20} />
+                    <Loader2 className="animate-spin text-slate-600" size={20} />
                 </div>
             ) : (
                 <LeaseContractDownloader

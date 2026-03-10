@@ -37,18 +37,18 @@ export default function RentCertificateGenerator({ tenant, property, lease, owne
     return (
         <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex-shrink-0">
-                    <FileCheck size={18} className="text-white" />
+                <div className="p-2 bg-slate-700 rounded-lg flex-shrink-0">
+                    <FileCheck size={16} className="text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <h5 className="font-semibold text-slate-800 text-sm">Attestation de Loyer</h5>
-                    <p className="text-xs text-slate-500 truncate">Justificatif de domicile</p>
+                    <h5 className="font-semibold text-text-primary text-sm">Attestation</h5>
+                    <p className="text-xs text-text-tertiary truncate">Justificatif de domicile</p>
                 </div>
             </div>
 
             {ownerProfile && !ownerInfo ? (
                 <div className="flex items-center justify-center px-4">
-                    <Loader2 className="animate-spin text-purple-500" size={20} />
+                    <Loader2 className="animate-spin text-slate-600" size={20} />
                 </div>
             ) : (
                 <RentCertificateDownloader
